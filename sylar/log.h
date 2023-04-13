@@ -14,6 +14,7 @@
 #include <string>
 #include <stdint.h>
 #include <memory>
+#include <list>
 
 namespace sylar {
 
@@ -22,7 +23,6 @@ namespace sylar {
     public:
         typedef std::shared_ptr<LogEvent> ptr; // 智能指针, 用于管理日志事件对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         LogEvent();
-
     private:
         const char *m_file = nullptr;   // 文件名
         int32_t m_line = 0;             // 行号
@@ -67,16 +67,27 @@ namespace sylar {
     };
 
     // 日志器
-    class logger {
+    class Logger {
     public:
-        typedef std::shared_ptr<logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
+        typedef std::shared_ptr<Logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
 
-        logger(const std::string &name = "root");
+        Logger(const std::string &name = "root");
         void log(LogLevel::Level level, const LogEvent::ptr event);
+
+        void debug(LogEvent::ptr event);
+        void info(LogEvent::ptr event);
+        void warn(LogEvent::ptr event);
+        void error(LogEvent::ptr event);
+        void fatal(LogEvent::ptr event);
+
+        void addAppender(LogAppender::ptr appender);
+        void delAppender(LogAppender::ptr appender);
+        LogLevel::Level getLevel() const { return m_level; }
+        void setLevel(LogLevel::Level val) { m_level = val; }
     private:
-        std::string m_name; // 日志器名称
-        LogLevel::Level m_level;    // 日志级别
-        LogAppender::ptr m_appender;    // 日志输出地
+        std::string m_name;                         // 日志器名称
+        LogLevel::Level m_level;                    // 日志级别
+        std::list<LogAppender::ptr> m_appenders;    // appender 集合
     };
 
     // 输出到控制台的日志输出地
