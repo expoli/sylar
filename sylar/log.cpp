@@ -34,6 +34,7 @@ namespace sylar {
 
     class MessageFormatItem : public LogFormatter::FormatItem {
     public:
+        MessageFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getContent();
         }
@@ -41,6 +42,7 @@ namespace sylar {
 
     class LevelFormatItem : public LogFormatter::FormatItem {
     public:
+        LevelFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << LogLevel::ToString(level);
         }
@@ -48,6 +50,7 @@ namespace sylar {
 
     class ElapseFormatItem : public LogFormatter::FormatItem {
     public:
+        ElapseFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getElapse();
         }
@@ -55,6 +58,7 @@ namespace sylar {
 
     class NameFormatItem : public LogFormatter::FormatItem {
     public:
+        NameFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << logger->getName();
         }
@@ -62,6 +66,7 @@ namespace sylar {
 
     class ThreadIdFormatItem : public LogFormatter::FormatItem {
     public:
+        ThreadIdFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getThreadId();
         }
@@ -69,6 +74,7 @@ namespace sylar {
 
     class FiberIdFormatItem : public LogFormatter::FormatItem {
     public:
+        FiberIdFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getFiberId();
         }
@@ -89,6 +95,7 @@ namespace sylar {
 
     class FilenameFormatItem : public LogFormatter::FormatItem {
     public:
+        FilenameFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getFile();
         }
@@ -96,6 +103,7 @@ namespace sylar {
 
     class LineFormatItem : public LogFormatter::FormatItem {
     public:
+        LineFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << event->getLine();
         }
@@ -103,6 +111,7 @@ namespace sylar {
 
     class NewLineFormatItem : public LogFormatter::FormatItem {
     public:
+        NewLineFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
             os << std::endl;
         }
@@ -111,7 +120,7 @@ namespace sylar {
     class StringFormatItem : public LogFormatter::FormatItem {
     public:
         StringFormatItem(const std::string &str)
-                :FormatItem(str),m_string(str) {
+                :m_string(str) {
         }
 
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
@@ -123,7 +132,6 @@ namespace sylar {
 
     Logger::Logger(const std::string &name)
             : m_name(name) {
-
     }
 
     void Logger::addAppender(LogAppender::ptr appender) {
@@ -139,10 +147,11 @@ namespace sylar {
         }
     }
 
-    void Logger::log(LogLevel::Level level, const LogEvent::ptr event) {
+    void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) {
+            auto self = shared_from_this();
             for (auto &i: m_appenders) {
-                i->log(level,Logger::ptr ,event);
+                i->log(self,level ,event);
             }
         }
     }
@@ -252,7 +261,7 @@ namespace sylar {
             }
             if (fmt_status == 0) {
                 if (!nstr.empty()) {
-                    vec.push_back(std::make_tuple(nstr, "", 0));
+                    vec.push_back(std::make_tuple(nstr, std::string(), 0));
                 }
                 str = m_pattern.substr(i + 1, n - i - 1);
                 vec.push_back(std::make_tuple(str, fmt, 1));

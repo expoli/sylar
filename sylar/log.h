@@ -12,7 +12,7 @@
 #define SYLAR_NEW_LOG_H
 
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 #include <memory>
 #include <list>
 #include <fstream>
@@ -22,7 +22,6 @@
 namespace sylar {
 
     class Logger;
-
     // 日志事件
     class LogEvent {
     public:
@@ -72,9 +71,8 @@ namespace sylar {
         class FormatItem {
         public:
             typedef std::shared_ptr<FormatItem> ptr;
-            FormatItem(const std::string &format = "") {};
             virtual ~FormatItem() {}
-            virtual std::string format(std::ostream& os,std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
+            virtual void format(std::ostream& os,std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
         };
 
         void init();
@@ -100,12 +98,12 @@ namespace sylar {
     };
 
     // 日志器
-    class Logger {
+    class Logger : public std::enable_shared_from_this<Logger> { // 只有定义了这个它才能在自己的成员函数中使用shared_from_this
     public:
         typedef std::shared_ptr<Logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
 
         Logger(const std::string &name = "root");
-        void log(LogLevel::Level level, const LogEvent::ptr event);
+        void log(LogLevel::Level level, LogEvent::ptr event);
 
         void debug(LogEvent::ptr event);
         void info(LogEvent::ptr event);
@@ -129,7 +127,7 @@ namespace sylar {
     class StdoutLogAppender : public LogAppender {
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr; // 智能指针
-        virtual void log(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
+        void log(Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
     private:
     };
 
@@ -138,7 +136,7 @@ namespace sylar {
     public:
         typedef std::shared_ptr<FileLogAppender> ptr; // 智能指针
         FileLogAppender(const std::string &filename);
-        virtual void log(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) override;
+        void log(Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override;
 
         // 重新打开文件, 文件打开成功返回true, 否则返回false
         bool reopen(); // 重新打开文件
