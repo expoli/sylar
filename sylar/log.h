@@ -21,6 +21,8 @@
 
 namespace sylar {
 
+    class Logger;
+
     // 日志事件
     class LogEvent {
     public:
@@ -64,13 +66,15 @@ namespace sylar {
         typedef std::shared_ptr<LogFormatter> ptr; // 智能指针, 用于管理日志格式器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         LogFormatter(const std::string &pattern);
 
-        std::string format(LogLevel::Level level, LogEvent::ptr event);
+        //%t
+        std::string format(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event);
     public:
         class FormatItem {
         public:
             typedef std::shared_ptr<FormatItem> ptr;
+            FormatItem(const std::string &format = "") {};
             virtual ~FormatItem() {}
-            virtual std::string format(std::ostream& os, LogLevel::Level level, LogEvent::ptr event) = 0;
+            virtual std::string format(std::ostream& os,std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0;
         };
 
         void init();
@@ -86,7 +90,7 @@ namespace sylar {
         typedef std::shared_ptr<LogAppender> ptr; // 智能指针, 用于管理日志输出地对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
 
-        virtual void log(LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
+        virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
 
         void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
         LogFormatter::ptr getFormatter() const { return m_formatter; }
@@ -113,6 +117,8 @@ namespace sylar {
         void delAppender(LogAppender::ptr appender);
         LogLevel::Level getLevel() const { return m_level; }
         void setLevel(LogLevel::Level val) { m_level = val; }
+
+        const std::string &getName() const { return m_name; }
     private:
         std::string m_name;                         // 日志器名称
         LogLevel::Level m_level;                    // 日志级别
@@ -123,7 +129,7 @@ namespace sylar {
     class StdoutLogAppender : public LogAppender {
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr; // 智能指针
-        virtual void log(LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
+        virtual void log(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
     private:
     };
 
@@ -132,7 +138,7 @@ namespace sylar {
     public:
         typedef std::shared_ptr<FileLogAppender> ptr; // 智能指针
         FileLogAppender(const std::string &filename);
-        virtual void log(LogLevel::Level level, LogEvent::ptr event) override;
+        virtual void log(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) override;
 
         // 重新打开文件, 文件打开成功返回true, 否则返回false
         bool reopen(); // 重新打开文件
