@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <memory>
 #include <list>
+#include <fstream>
 
 namespace sylar {
 
@@ -61,9 +62,13 @@ namespace sylar {
         typedef std::shared_ptr<LogAppender> ptr; // 智能指针, 用于管理日志输出地对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
 
-        void log(LogLevel::Level level, LogEvent::ptr event);
-    private:
+        virtual void log(LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
+
+        void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
+        LogFormatter::ptr getFormatter() const { return m_formatter; }
+    protected:
         LogLevel::Level m_level;    // 日志级别
+        LogFormatter::ptr m_formatter;  // 日志格式器
     };
 
     // 日志器
@@ -92,12 +97,24 @@ namespace sylar {
 
     // 输出到控制台的日志输出地
     class StdoutLogAppender : public LogAppender {
-
+    public:
+        typedef std::shared_ptr<StdoutLogAppender> ptr; // 智能指针
+        virtual void log(LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
+    private:
     };
 
     // 输出到文件的日志输出地
     class FileLogAppender : public LogAppender {
+    public:
+        typedef std::shared_ptr<FileLogAppender> ptr; // 智能指针
+        FileLogAppender(const std::string &filename);
+        virtual void log(LogLevel::Level level, LogEvent::ptr event) override;
 
+        // 重新打开文件, 文件打开成功返回true, 否则返回false
+        bool reopen(); // 重新打开文件
+    private:
+        std::string m_filename; // 文件名
+        std::ofstream m_filestream; // 文件流
     };
 }
 
