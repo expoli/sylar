@@ -16,6 +16,8 @@
 #include <memory>
 #include <list>
 #include <fstream>
+#include <vector>
+#include <sstream>
 
 namespace sylar {
 
@@ -24,6 +26,14 @@ namespace sylar {
     public:
         typedef std::shared_ptr<LogEvent> ptr; // 智能指针, 用于管理日志事件对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         LogEvent();
+
+        const char *getFile() const { return m_file; }
+        int32_t getLine() const { return m_line; }
+        uint32_t getElapse() const { return m_elapse; }
+        int32_t getThreadId() const { return m_threadId; }
+        uint32_t getFiberId() const { return m_fiberId; }
+        uint64_t getTime() const { return m_time; }
+        const std::string &getContent() const { return m_content; }
     private:
         const char *m_file = nullptr;   // 文件名
         int32_t m_line = 0;             // 行号
@@ -44,15 +54,29 @@ namespace sylar {
             ERROR = 4,
             FATAL = 5
         };
+
+        static const char *ToString(LogLevel::Level level);
     };
 
     // 日志格式器
     class LogFormatter {
     public:
         typedef std::shared_ptr<LogFormatter> ptr; // 智能指针, 用于管理日志格式器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
+        LogFormatter(const std::string &pattern);
 
-        std::string format(LogEvent::ptr event);
+        std::string format(LogLevel::Level level, LogEvent::ptr event);
+    public:
+        class FormatItem {
+        public:
+            typedef std::shared_ptr<FormatItem> ptr;
+            virtual ~FormatItem() {}
+            virtual std::string format(std::ostream& os, LogLevel::Level level, LogEvent::ptr event) = 0;
+        };
+
+        void init();
     private:
+        std::string m_pattern;  // 日志格式
+        std::vector<FormatItem::ptr> m_items; // 日志格式项
     };
 
 
