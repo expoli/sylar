@@ -40,6 +40,22 @@ namespace sylar {
         m_event->getLogger()->log(m_event->getLevel(), m_event);
     }
 
+    void LogEvent::format(const char *fmt, ...) {
+        va_list al;
+        va_start(al, fmt);
+        format(fmt, al);
+        va_end(al);
+    }
+
+    void LogEvent::format(const char *fmt, va_list al) {
+        char *buf = nullptr;
+        int len = vasprintf(&buf, fmt, al); // 自动分配内存，并完成初始化
+        if (len != -1) {
+            m_ss << std::string(buf, len);
+            free(buf);
+        }
+    }
+
     std::stringstream &LogEventWrap::getSS() {
         return m_event->getSS();
     }
@@ -226,7 +242,7 @@ namespace sylar {
 
     FileLogAppender::FileLogAppender(const std::string &filename)
             : m_filename(filename) {
-
+        reopen();
     }
 
     void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
@@ -366,6 +382,16 @@ namespace sylar {
             }
 //            std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ")" << std::endl;
         }
+    }
+
+    LoggerManager::LoggerManager() {
+        m_root.reset(new Logger);
+        m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
+    }
+
+    Logger::ptr LoggerManager::getLogger(const std::string &name) {
+        auto it = m_loggers.find(name);
+        return it == m_loggers.end() ? m_root : it->second;
     }
 
 

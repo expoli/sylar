@@ -18,6 +18,9 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <cstdarg>
+#include <map>
+#include "singleton.h"
 
 #define SYLAR_LOG_LEVEL(logger, level) \
     if(logger->getLevel() <= level) \
@@ -30,6 +33,19 @@
 #define SYLAR_LOG_WARN(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::WARN)
 #define SYLAR_LOG_ERROR(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::ERROR)
 #define SYLAR_LOG_FATAL(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::FATAL)
+
+#define SYLAR_LOG_FMT_LEVEL(logger, level, fmt, ...) \
+    if(logger->getLevel() <= level) \
+        sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, \
+        __FILE__, __LINE__, 0, sylar::GetThreadId(), sylar::GetFiberId(), time(0)))) \
+        .getEvent()->format(fmt, __VA_ARGS__)
+
+#define SYLAR_LOG_FMT_DEBUG(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::DEBUG, fmt, __VA_ARGS__)
+#define SYLAR_LOG_FMT_INFO(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::INFO, fmt, __VA_ARGS__)
+#define SYLAR_LOG_FMT_WARN(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::WARN, fmt, __VA_ARGS__)
+#define SYLAR_LOG_FMT_ERROR(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::ERROR, fmt, __VA_ARGS__)
+#define SYLAR_LOG_FMT_FATAL(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::FATAL, fmt, __VA_ARGS__)
+
 
 namespace sylar {
 
@@ -68,6 +84,7 @@ namespace sylar {
 
         std::stringstream &getSS() { return m_ss; }
         void format(const char *fmt, ...);
+        void format(const char *fmt, va_list al);
     private:
         const char *m_file = nullptr;   // 文件名
         int32_t m_line = 0;             // 行号
@@ -124,6 +141,9 @@ namespace sylar {
 
         void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
         LogFormatter::ptr getFormatter() const { return m_formatter; }
+
+        LogLevel::Level getLevel() const { return m_level; }
+        void setLevel(LogLevel::Level val) { m_level = val; }
     protected:
         LogLevel::Level m_level = LogLevel::DEBUG;    // 日志级别
         LogFormatter::ptr m_formatter;  // 日志格式器
@@ -177,6 +197,21 @@ namespace sylar {
         std::string m_filename; // 文件名
         std::ofstream m_filestream; // 文件流
     };
+
+    // 日志管理器
+    class LoggerManager {
+    public:
+        LoggerManager();
+        Logger::ptr getLogger(const std::string &name);
+
+        void init();
+    private:
+        std::map<std::string, Logger::ptr> m_loggers; // 日志器集合
+        Logger::ptr m_root; // 根日志器
+    };
+
+    typedef sylar::Singleton<LoggerManager> LoggerMgr; // 单例模式, 保证程序中只有一个日志管理器对象
+
 }
 
 
