@@ -84,10 +84,18 @@ namespace sylar {
     public:
         DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S")
                 : m_format(format) {
+            if (m_format.empty()) {
+                m_format = "%Y-%m-%d %H:%M:%S";
+            }
         }
 
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
-            os << event->getTime();
+            struct tm tm;
+            time_t time = event->getTime();
+            localtime_r(&time, &tm);
+            char buf[64];
+            strftime(buf, sizeof(buf), m_format.c_str(), &tm);
+            os << buf;
         }
     private:
         std::string m_format;
@@ -143,7 +151,7 @@ namespace sylar {
     Logger::Logger(const std::string &name)
             : m_name(name)
             , m_level(LogLevel::DEBUG) {
-        m_formatter.reset(new LogFormatter("%d [%p] %f %l %m %n"));
+        m_formatter.reset(new LogFormatter("%d [%p] <%f:%l>     %m %n"));
     }
 
     void Logger::addAppender(LogAppender::ptr appender) {
