@@ -130,11 +130,26 @@ namespace sylar {
         std::string m_string;
     };
 
+    LogEvent::LogEvent(const char *file, int32_t line, uint32_t elapse
+                       , uint32_t thread_id, uint32_t fiber_id, uint64_t time)
+            : m_file(file)
+            , m_line(line)
+            , m_elapse(elapse)
+            , m_threadId(thread_id)
+            , m_fiberId(fiber_id)
+            , m_time(time){
+    }
+
     Logger::Logger(const std::string &name)
-            : m_name(name) {
+            : m_name(name)
+            , m_level(LogLevel::DEBUG) {
+        m_formatter.reset(new LogFormatter("%d [%p] %f %l %m %n"));
     }
 
     void Logger::addAppender(LogAppender::ptr appender) {
+        if (!appender->getFormatter()){
+            appender->setFormatter(m_formatter);
+        }
         m_appenders.push_back(appender);
     }
 
@@ -203,7 +218,7 @@ namespace sylar {
 
     LogFormatter::LogFormatter(const std::string &pattern)
             : m_pattern(pattern) {
-
+        init();
     }
 
     std::string LogFormatter::format(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) {
@@ -238,8 +253,9 @@ namespace sylar {
 
             std::string str;
             std::string fmt;
-            while (n < m_pattern.size()) {
-                if (isspace(m_pattern[n])){
+            while(n < m_pattern.size()) {
+                if(!isalpha(m_pattern[n]) && m_pattern[n] != '{'
+                                   && m_pattern[n] != '}') {
                     break;
                 }
                 if (fmt_status == 0) {
@@ -258,14 +274,17 @@ namespace sylar {
                         break;
                     }
                 }
+                ++n;
             }
-            if (fmt_status == 0) {
-                if (!nstr.empty()) {
+
+            if(fmt_status == 0) {
+                if(!nstr.empty()) {
                     vec.push_back(std::make_tuple(nstr, std::string(), 0));
+                    nstr.clear();
                 }
                 str = m_pattern.substr(i + 1, n - i - 1);
                 vec.push_back(std::make_tuple(str, fmt, 1));
-                i = n;
+                i = n - 1;
             } else if (fmt_status == 1) {
                 std::cout << "pattern parse error: " << m_pattern << " - " << m_pattern.substr(i) << std::endl;
                 vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
@@ -274,13 +293,13 @@ namespace sylar {
                     vec.push_back(std::make_tuple(nstr, "", 0));
                 }
                 vec.push_back(std::make_tuple(str, fmt, 1));
-                i = n;
+                i = n - 1;
             }
         }
         if (!nstr.empty()) {
             vec.push_back(std::make_tuple(nstr, "", 0));
         }
-        static std::map<std::string, std::function<FormatItem::ptr(const std::string& str) >> s_format_items = {
+        static std::map<std::string, std::function<FormatItem::ptr(const std::string& str)> > s_format_items = {
 #define XX(str, C) \
         {#str, [](const std::string& fmt) { return FormatItem::ptr(new C(fmt));}}
 
@@ -295,15 +314,6 @@ namespace sylar {
                 XX(l, LineFormatItem), // 行号
 #undef XX
         };
-        //%m -- 消息体
-        //%p -- 日志级别
-        //%r -- 日志事件发生的时间
-        //%c -- 日志名称
-        //%t -- 线程id
-        //%n -- 回车换行
-        //%d -- 时间
-        //%f -- 文件名
-        //%l -- 行号
 
         for (auto &i: vec) {
             if (std::get<2>(i) == 0) { // 字符串
@@ -316,7 +326,7 @@ namespace sylar {
                     m_items.push_back(it->second(std::get<1>(i)));
                 }
             }
-            std::cout << std::get<0>(i) << " - " << std::get<1>(i) << " - " << std::get<2>(i) << std::endl;
+            std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - (" << std::get<2>(i) << ")" << std::endl;
         }
     }
 
