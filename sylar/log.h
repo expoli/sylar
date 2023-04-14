@@ -19,34 +19,19 @@
 #include <vector>
 #include <sstream>
 
+#define SYLAR_LOG_LEVEL(logger, level) \
+    if(logger->getLevel() <= level) \
+        sylar::LogEventWrap(sylar::LogEvent::ptr(new sylar::LogEvent(logger, level, \
+        __FILE__, __LINE__, 0, sylar::GetThreadId(), sylar::GetFiberId(), time(0)))) \
+        .getSS()
+
+#define SYLAR_LOG_DEBUG(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::DEBUG)
+#define SYLAR_LOG_INFO(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::INFO)
+#define SYLAR_LOG_WARN(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::WARN)
+#define SYLAR_LOG_ERROR(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::ERROR)
+#define SYLAR_LOG_FATAL(logger) SYLAR_LOG_LEVEL(logger, sylar::LogLevel::FATAL)
+
 namespace sylar {
-
-    class Logger;
-    // 日志事件
-    class LogEvent {
-    public:
-        typedef std::shared_ptr<LogEvent> ptr; // 智能指针, 用于管理日志事件对象的生命周期, 防止内存泄漏, 保证程序的健壮性
-        LogEvent(const char *file, int32_t line, uint32_t elapse
-                 , uint32_t threadId, uint32_t fiberId, uint64_t time);
-
-        const char *getFile() const { return m_file; }
-        int32_t getLine() const { return m_line; }
-        uint32_t getElapse() const { return m_elapse; }
-        uint32_t getThreadId() const { return m_threadId; }
-        uint32_t getFiberId() const { return m_fiberId; }
-        uint64_t getTime() const { return m_time; }
-        std::string getContent() const { return m_ss.str(); }
-
-        std::stringstream &getSS() { return m_ss; }
-    private:
-        const char *m_file = nullptr;   // 文件名
-        int32_t m_line = 0;             // 行号
-        uint32_t m_elapse = 0;          // 程序启动开始到现在的毫秒数
-        uint32_t m_threadId = 0;        // 线程id
-        uint32_t m_fiberId = 0;         // 协程id
-        uint64_t m_time = 0;            // 时间戳
-        std::stringstream m_ss;          // 日志内容
-    };
 
     // 日志级别
     class LogLevel {
@@ -60,6 +45,50 @@ namespace sylar {
         };
 
         static const char *ToString(LogLevel::Level level);
+    };
+
+    class Logger;
+    // 日志事件
+    class LogEvent {
+    public:
+        typedef std::shared_ptr<LogEvent> ptr; // 智能指针, 用于管理日志事件对象的生命周期, 防止内存泄漏, 保证程序的健壮性
+        LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level
+                 , const char *file, int32_t line, uint32_t elapse
+                 , uint32_t threadId, uint32_t fiberId, uint64_t time);
+
+        const char *getFile() const { return m_file; }
+        int32_t getLine() const { return m_line; }
+        uint32_t getElapse() const { return m_elapse; }
+        uint32_t getThreadId() const { return m_threadId; }
+        uint32_t getFiberId() const { return m_fiberId; }
+        uint64_t getTime() const { return m_time; }
+        std::string getContent() const { return m_ss.str(); }
+        std::shared_ptr<Logger> getLogger() const { return m_logger; }
+        LogLevel::Level getLevel() const { return m_level; }
+
+        std::stringstream &getSS() { return m_ss; }
+        void format(const char *fmt, ...);
+    private:
+        const char *m_file = nullptr;   // 文件名
+        int32_t m_line = 0;             // 行号
+        uint32_t m_elapse = 0;          // 程序启动开始到现在的毫秒数
+        uint32_t m_threadId = 0;        // 线程id
+        uint32_t m_fiberId = 0;         // 协程id
+        uint64_t m_time = 0;            // 时间戳
+        std::stringstream m_ss;          // 日志内容
+
+        std::shared_ptr<Logger> m_logger;
+        LogLevel::Level m_level;
+    };
+
+    class LogEventWrap {
+    public:
+        LogEventWrap(LogEvent::ptr e);
+        ~LogEventWrap();
+        std::stringstream &getSS();
+        LogEvent::ptr getEvent() const { return m_event; }
+    private:
+        LogEvent::ptr m_event;
     };
 
     // 日志格式器
