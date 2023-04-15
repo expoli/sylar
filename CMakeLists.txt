@@ -8,14 +8,18 @@ set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O0 -ggdb -std=c++11 -Wall -Wno-de
 set(LIB_SRC
         sylar/log.cpp
         sylar/util.cpp
+        sylar/config.cpp
         )
 
 add_library(sylar SHARED ${LIB_SRC})
 
 add_executable(test tests/test.cpp)
 add_dependencies(test sylar)
-
 target_link_libraries(test sylar)
+
+add_executable(test_config tests/test_config.cpp)
+add_dependencies(test_config sylar)
+target_link_libraries(test_config sylar)
 
 set(CMAKE_CXX_STANDARD 11)
 
