@@ -5,7 +5,8 @@
 * ArchLinux
 * cmake
 * gcc
-* boost
+  * boost
+  * yaml-cpp
 
 ## 项目结构
 
@@ -32,5 +33,16 @@
 
 ## 配置系统
 
-Config --> Yaml
+* Config --> Yaml
+  * yaml-cpp
+    * 第三方库，GitHub上有
 
+## 协程库封装
+
+## socket 函数库
+
+## http 协议开发
+
+## 分布协议
+
+## 推荐系统
