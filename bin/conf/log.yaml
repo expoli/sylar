@@ -18,3 +18,14 @@ system:
   port: 9900
   value: 15
   int_vec: [1, 2, 3, 4, 5]
+  int_list: [1, 2, 3, 4, 5]
+  int_set: [1, 2, 4, 4, 5]
+  int_uset: [10, 20, 40, 40, 50]
+  str_int_map:
+    a: 10
+    b: 20
+    c: 30
+  str_int_umap:
+    a: 10
+    b: 20
+    c: 30
