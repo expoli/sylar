@@ -36,6 +36,26 @@
 * Config --> Yaml
   * yaml-cpp
     * 第三方库，GitHub上有
+* 使用方式
+  * 读取配置文件
+  * 读取配置文件中的某个节点
+  * 读取配置文件中的某个节点的某个属性
+  * 读取配置文件中的某个节点的某个属性的值
+  * 读取配置文件中的某个节点的某个属性的值的数组
+  * 读取配置文件中的某个节点的某个属性的值的数组的某个值
+```c++
+YAML::Node root = YAML::LoadFile("config.yml");
+for(auto i = root.begin(); i != root.end(); ++i) {
+    std::cout << i->first << " : " << i->second << std::endl;
+}
+
+node.IsSequence() // 判断是否是数组
+for(size_t i = 0; i < node.size(); ++i) {
+    std::cout << node[i].as<std::string>() << std::endl;
+}
+
+node.IsScalar() // 判断是否是标量
+```
 
 ## 协程库封装
 
