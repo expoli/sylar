@@ -45,7 +45,54 @@ namespace sylar {
         std::string m_description;
     };
 
+    // 基础类型的转换
+    // F from_type, T to_type
+    template<class F, class T>
+    class LexicalCast {
+    public:
+        T operator()(const F& v) {
+            return boost::lexical_cast<T>(v);
+        }
+    };
+
+    // todo 常用容器的 偏特化
     template<class T>
+    class LexicalCast<std::string, std::vector<T>> {
+    public:
+        std::vector<T> operator()(const std::string& v) {
+            YAML::Node node = YAML::Load(v);    // 解析成 yaml, 一个数组
+            typename std::vector<T> vec;    // typename 用于告诉编译器，这是一个类型，而不是一个变量
+            std::stringstream ss;
+            for(size_t i = 0; i < node.size(); ++i) {
+                ss.str("");
+                ss << node[i];
+                vec.push_back(LexicalCast<std::string, T>()(ss.str())); // 递归调用
+            }
+            return vec;
+        }
+    };
+
+    // vector -> string
+    template<class T>
+    class LexicalCast<std::vector<T>, std::string> {
+    public:
+        std::string operator()(const std::vector<T>& v) {
+            YAML::Node node(YAML::NodeType::Sequence);
+            for (auto& i : v) {
+                node.push_back(YAML::Load(LexicalCast<T, std::string>()(i))); // 递归调用, 把它变成一个 yaml 的结点
+            }
+            std::stringstream ss;
+            ss << node;
+            return ss.str();
+        }
+    };
+
+    // 实现序列化与反序列化, 实现复杂类型的转换
+    // FromStr T operator()(const std::string& v)
+    // ToStr std::string operator()(const T& v)
+    // todo 特例化，实现基础类型的转换
+    template<class T, class FromStr = LexicalCast<std::string, T>
+                    , class ToStr = LexicalCast<T, std::string>>
     class ConfigVar : public ConfigVarBase {
     public:
         typedef std::shared_ptr<ConfigVar> ptr;
@@ -59,7 +106,8 @@ namespace sylar {
 
         std::string toString() override {
             try {
-                return boost::lexical_cast<std::string>(m_val);
+//                return boost::lexical_cast<std::string>(m_val);
+                return ToStr()(m_val);
             } catch (std::exception& e) {
                 SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::toString exception"
                     << e.what() << " convert: " << typeid(m_val).name() << " to string";
@@ -69,7 +117,8 @@ namespace sylar {
 
         bool fromString(const std::string& val) override {
             try {
-                m_val = boost::lexical_cast<T>(val);
+//                m_val = boost::lexical_cast<T>(val);
+                setValue(FromStr()(val));
                 return true;
             } catch (std::exception& e) {
                 SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::FromString exception"

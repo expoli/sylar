@@ -57,6 +57,19 @@ for(size_t i = 0; i < node.size(); ++i) {
 node.IsScalar() // 判断是否是标量
 ```
 
+- 配置系统的原则：约定优于配置 
+  - 项目真正跑起来的时候，需要修改的配置量不多，可能只有一些比较少的比较重要的配置。
+
+```c++
+template<T, FromStr, ToStr>
+class ConfigVar;
+
+template<F, T>
+LexicalCast;
+
+// 容器片特化，目前支持vector
+```
+
 ## 协程库封装
 
 ## socket 函数库
