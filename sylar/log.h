@@ -65,6 +65,7 @@ namespace sylar {
         };
 
         static const char *ToString(LogLevel::Level level);
+        static LogLevel::Level FromString(const std::string &str);
     };
 
     class Logger;
@@ -130,9 +131,14 @@ namespace sylar {
         };
 
         void init();
+
+        bool isError() const { return m_error; }
+
+        const std::string getPattern() const { return m_pattern; }
     private:
         std::string m_pattern;  // 日志格式
         std::vector<FormatItem::ptr> m_items; // 日志格式项
+        bool m_error = false;   // 格式是否有误
     };
 
 
@@ -143,6 +149,7 @@ namespace sylar {
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
 
         virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
+        virtual std::string toYamlString() = 0; // 纯虚函数
 
         void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
         LogFormatter::ptr getFormatter() const { return m_formatter; }
@@ -171,10 +178,17 @@ namespace sylar {
 
         void addAppender(LogAppender::ptr appender);
         void delAppender(LogAppender::ptr appender);
+        void clearAppenders();
         LogLevel::Level getLevel() const { return m_level; }
         void setLevel(LogLevel::Level val) { m_level = val; }
 
         const std::string &getName() const { return m_name; }
+
+        void setFormatter(LogFormatter::ptr val);
+        void setFormatter(const std::string &val);
+        LogFormatter::ptr getFormatter();
+
+        std::string toYamlString();
     private:
         std::string m_name;                         // 日志器名称
         LogLevel::Level m_level;                    // 日志级别
@@ -188,6 +202,7 @@ namespace sylar {
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr; // 智能指针
         void log(Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override; // 重写父类的虚函数, 继承的实现
+        std::string toYamlString() override;
     private:
     };
 
@@ -197,6 +212,7 @@ namespace sylar {
         typedef std::shared_ptr<FileLogAppender> ptr; // 智能指针
         FileLogAppender(const std::string &filename);
         void log(Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override;
+        std::string toYamlString() override;
 
         // 重新打开文件, 文件打开成功返回true, 否则返回false
         bool reopen(); // 重新打开文件
@@ -213,6 +229,8 @@ namespace sylar {
 
         void init();
         Logger::ptr getRoot() const { return m_root; }
+
+        std::string toYamlString();
     private:
         std::map<std::string, Logger::ptr> m_loggers; // 日志器集合
         Logger::ptr m_root; // 根日志器

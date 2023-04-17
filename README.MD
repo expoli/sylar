@@ -109,7 +109,12 @@ static Logger::ptr g_log = SYLAR_LOG_NAME("system");
 当 logger 的 appenders 为空，使用 root 写 logger
 ```
 
-
+- 定义 LogDefine LogAppendDefine 偏特化 LogDefine
+- 实现日志配置解析
+- 实现日志配置的热更新
+- fix 日志文件未以追加方式打开的 bug
+- 不同 log 使用不同的配置
+  - （fix 原始根据文件定义 appender 的日志级别为 unknown 所以无法输出日志的 bug）
 
 ## 协程库封装
 

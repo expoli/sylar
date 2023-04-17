@@ -340,8 +340,8 @@ namespace sylar {
         template<class T>
         static typename ConfigVar<T>::ptr Lookup(const std::string& name
                 , const T& default_value, const std::string& description = "") {   // 如果有的话是返回，没有的话是创建
-            auto it = s_datas.find(name);
-            if (it != s_datas.end()) {
+            auto it = GetDatas().find(name);
+            if (it != GetDatas().end()) {
                 auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second); // 利用dynamic_pointer_cast进行类型转换，如果同名的不是T类型的，就会返回空
                 if (tmp) {
                     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "Lookup name " << name << " exists";
@@ -365,14 +365,14 @@ namespace sylar {
             }
 
             typename ConfigVar<T>::ptr v(new ConfigVar<T>(name, default_value, description));
-            s_datas[name] = v;
+            GetDatas()[name] = v;
             return v;
         }
 
         template<class T>
         static typename ConfigVar<T>::ptr Lookup(const std::string& name) {
-            auto it = s_datas.find(name);
-            if (it == s_datas.end()) {   // 没有找到
+            auto it = GetDatas().find(name);
+            if (it == GetDatas().end()) {   // 没有找到
                 return nullptr;
             }
             return std::dynamic_pointer_cast<ConfigVar<T>>(it->second); // 找到了，转成对应的智能指针
@@ -382,7 +382,12 @@ namespace sylar {
 
         static ConfigVarBase::ptr LookupBase(const std::string& name);
     private:
-        static ConfigVarMap s_datas;
+        static ConfigVarMap& GetDatas() {
+            // 初始化的顺序，可能会引起 bug ，现在使用静态函数来返回，s_datas 一定先初始化
+            // 编译器并没有规定全局变量、静态变量谁先初始化
+            static ConfigVarMap s_datas;
+            return s_datas;
+        }
     };
 }
 
