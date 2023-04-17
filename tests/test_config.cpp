@@ -213,6 +213,9 @@ void test_log() {
     SYLAR_LOG_INFO(root_log) << "hello root";
     SYLAR_LOG_DEBUG(root_log) << "hello root";
 
+    system_log->setFormatter("%d - %m%n");
+    SYLAR_LOG_INFO(system_log) << "hello system";
+
 }
 
 int main(int argc, char** argv ) {

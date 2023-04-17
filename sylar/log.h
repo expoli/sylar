@@ -144,6 +144,7 @@ namespace sylar {
 
     // 日志输出地
     class LogAppender {
+    friend class Logger;
     public:
         typedef std::shared_ptr<LogAppender> ptr; // 智能指针, 用于管理日志输出地对象的生命周期, 防止内存泄漏, 保证程序的健壮性
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
@@ -151,13 +152,14 @@ namespace sylar {
         virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
         virtual std::string toYamlString() = 0; // 纯虚函数
 
-        void setFormatter(LogFormatter::ptr val) { m_formatter = val; }
+        void setFormatter(LogFormatter::ptr val);
         LogFormatter::ptr getFormatter() const { return m_formatter; }
 
         LogLevel::Level getLevel() const { return m_level; }
         void setLevel(LogLevel::Level val) { m_level = val; }
     protected:
         LogLevel::Level m_level = LogLevel::DEBUG;    // 日志级别
+        bool m_hasFormatter = false;    // 是否有日志格式器
         LogFormatter::ptr m_formatter;  // 日志格式器
     };
 
