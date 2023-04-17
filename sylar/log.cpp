@@ -576,6 +576,11 @@ namespace sylar {
                     }
                     if (n["level"].IsDefined()) {
                         lad.level = LogLevel::FromString(n["level"].as<std::string>());
+                        // 如果 appender 设置了 level，但是 level 比 logger 的 level 低，应该重置为 logger 的 level
+                        // 过低的 level 并不能输出，反而可能引起歧义
+                        if (lad.level <= ld.level) {
+                            lad.level = ld.level;
+                        }
                     } else{ // 如果没有为 appender 设置 level，则使用 logger 的 level
                         lad.level = ld.level;
                     }

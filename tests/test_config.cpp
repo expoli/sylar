@@ -198,7 +198,10 @@ void test_class() {
 
 void test_log() {
     static sylar::Logger::ptr system_log = SYLAR_LOG_NAME("system");
+    static sylar::Logger::ptr root_log = SYLAR_LOG_NAME("root");
     SYLAR_LOG_INFO(system_log) << "hello system" << std::endl;
+    SYLAR_LOG_INFO(root_log) << "hello root" << std::endl;
+    SYLAR_LOG_DEBUG(root_log) << "hello root" << std::endl;
     std::cout << sylar::LoggerMgr::GetInstance()->toYamlString() << std::endl;
     YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/log.yaml");
     sylar::Config::LoadFromYaml(root);
@@ -207,6 +210,9 @@ void test_log() {
     std::cout << "=================" << std::endl;
     std::cout << root << std::endl;
     SYLAR_LOG_INFO(system_log) << "hello system";
+    SYLAR_LOG_INFO(root_log) << "hello root";
+    SYLAR_LOG_DEBUG(root_log) << "hello root";
+
 }
 
 int main(int argc, char** argv ) {
