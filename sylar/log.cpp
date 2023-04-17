@@ -567,6 +567,9 @@ namespace sylar {
                         }
                     } else if (type == "StdoutLogAppender") {
                         lad.type = 2;
+                        if (n["formatter"].IsDefined()) {
+                            lad.formatter = n["formatter"].as<std::string>();
+                        }
                     } else {
                         SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "log config error: appender type is invalid";
                         continue;
