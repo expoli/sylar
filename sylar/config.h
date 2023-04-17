@@ -21,6 +21,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>   // 可以封装成指针，函数指针，lambda表达式，成员，伪装，把一个函数签名不一样的包装成需要的接口
 #include "log.h"
 
 namespace sylar {
@@ -253,6 +254,8 @@ namespace sylar {
     class ConfigVar : public ConfigVarBase {
     public:
         typedef std::shared_ptr<ConfigVar> ptr;
+        // todo 当一个配置更改的时候，需要监听者知道他原来的配置是什么，新的配置是什么
+        typedef std::function<void (const T& old_value, const T& new_value)> on_change_cb;  // 使用的时候与智能指针一样
 
         ConfigVar(const std::string& name
                   , const T& default_value
@@ -286,10 +289,48 @@ namespace sylar {
         }
 
         const T getValue() const { return m_val; }
-        void setValue(const T& v) { m_val = v; }
+
+        void setValue(const T& v) {
+            if (v == m_val) {   // 如果新值与旧值相同，不需要通知
+                return;
+            }
+            for (auto& i : m_cbs) { // 通知所有的监听者
+                i.second(m_val, v);
+            }
+            m_val = v;
+        }
+
         std::string getTypeName() const override { return typeid(T).name(); }
+
+        // 添加变更回调函数
+        void addListener(u_int64_t key, on_change_cb cb) {
+            m_cbs[key] = cb;
+        }
+
+        // 删除变更回调函数
+        void delListener(u_int64_t key) {
+            m_cbs.erase(key);
+        }
+
+        // 获取对应 key 的回调函数
+        on_change_cb getListener(u_int64_t key) {
+            auto it = m_cbs.find(key);
+            return it == m_cbs.end() ? nullptr : it->second;
+        }
+
+        // 清空所有的回调函数
+        void clearListener() {
+            m_cbs.clear();
+        }
     private:
         T m_val;
+
+        // 变更回调函数组
+        // todo 为什么要用map，而不是vector,因为functionl 没有比较函数，
+        // 所以在删除的时候，没办法判断是否是同一个函数，所以用在外围进行包装，使用map来定义它
+        // 传入的时候传入一个 key，然后在删除的时候，传入这个key，就可以删除了
+        // u_int64_t 是key，要求是唯一的，一般可以用hash值来表示
+        std::map<u_int64_t , on_change_cb> m_cbs;
     };
 
     class Config {
