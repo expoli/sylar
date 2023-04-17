@@ -48,6 +48,7 @@
 #define SYLAR_LOG_FMT_FATAL(logger, fmt, ...) SYLAR_LOG_FMT_LEVEL(logger, sylar::LogLevel::FATAL, fmt, __VA_ARGS__)
 
 #define SYLAR_LOG_ROOT() sylar::LoggerMgr::GetInstance()->getRoot()
+#define SYLAR_LOG_NAME(name) sylar::LoggerMgr::GetInstance()->getLogger(name)
 
 namespace sylar {
 
@@ -59,13 +60,15 @@ namespace sylar {
             INFO = 2,
             WARN = 3,
             ERROR = 4,
-            FATAL = 5
+            FATAL = 5,
+            UNKNOWN = 6
         };
 
         static const char *ToString(LogLevel::Level level);
     };
 
     class Logger;
+    class LoggerManager;
     // 日志事件
     class LogEvent {
     public:
@@ -153,6 +156,7 @@ namespace sylar {
 
     // 日志器
     class Logger : public std::enable_shared_from_this<Logger> { // 只有定义了这个它才能在自己的成员函数中使用shared_from_this
+        friend class LoggerManager;
     public:
         typedef std::shared_ptr<Logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
 
@@ -176,6 +180,7 @@ namespace sylar {
         LogLevel::Level m_level;                    // 日志级别
         std::list<LogAppender::ptr> m_appenders;    // appender 集合
         LogFormatter::ptr m_formatter;              // 日志格式器
+        Logger::ptr m_root;                         // 根日志器
     };
 
     // 输出到控制台的日志输出地

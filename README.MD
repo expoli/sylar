@@ -80,6 +80,37 @@ LexicalCast;
 ### 配置的事件机制
 当一个配置项发生修改的时候，可以反向通知对应的代码，回调函数的方式。
 
+### 日志系统整合配置系统
+
+```yaml
+logs:
+  - name: root
+    level: (debug, info, warn, error, fatal)
+    formatter: "%d%T%p%T%t%m%n"
+    appenders:
+      - type: StdoutLogAppender
+        level: (debug, info, warn, error, fatal)
+      - type: FileLogAppender
+        file: ./logs/xxx.log
+  - name: test
+    level: debug
+    formatter: "%d%T%p%T%m%n"
+    appenders:
+      - type: StdoutLogAppender
+      - type: FileLogAppender
+        file: ./logs/test.txt
+```
+
+- 保证 logger 的唯一性
+
+```c++
+static Logger::ptr g_log = SYLAR_LOG_NAME("system");
+//m_root, m_system-> m_root
+当 logger 的 appenders 为空，使用 root 写 logger
+```
+
+
+
 ## 协程库封装
 
 ## socket 函数库

@@ -58,7 +58,7 @@ void print_yaml(const YAML::Node& node, int level) {
 }
 
 void test_yaml() {
-    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/log.yaml");
+    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/test.yaml");
 
     print_yaml(root, 0);
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << root;
@@ -93,7 +93,7 @@ void test_config() {
     XX_M(g_str_int_map_value_config, str_int_map, before);
     XX_M(g_str_int_umap_value_config, str_int_umap, before);
 
-    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/log.yaml");
+    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/test.yaml");
     sylar::Config::LoadFromYaml(root);
 
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
@@ -185,7 +185,7 @@ void test_class() {
     XX_PM(g_person_map, "class.map before");
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
-    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/log.yaml");
+    YAML::Node root = YAML::LoadFile("/mnt/d/DEV/Clion/sylar_new/bin/conf/test.yaml");
     sylar::Config::LoadFromYaml(root);
     SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "after: " << g_person->getValue().toString() << "\n" << g_person->toString();
 

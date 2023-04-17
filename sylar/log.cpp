@@ -11,6 +11,7 @@
 #include <map>
 #include <functional>
 #include "log.h"
+#include "config.h"
 
 namespace sylar {
 
@@ -88,7 +89,7 @@ namespace sylar {
     public:
         NameFormatItem(const std::string &str = "") {}
         void format(std::ostream &os,Logger::ptr logger,LogLevel::Level level, LogEvent::ptr event) override {
-            os << logger->getName();
+            os << event->getLogger()->getName();
         }
     };
 
@@ -212,10 +213,14 @@ namespace sylar {
     }
 
     void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
-        if (level >= m_level) {
+        if (level >= m_level) { // 如果原来没有设置过level，那么默认是DEBUG，最低级别
             auto self = shared_from_this();
-            for (auto &i: m_appenders) {
-                i->log(self,level ,event);
+            if (!m_appenders.empty()) { // 如果有appender
+                for (auto &i: m_appenders) {
+                    i->log(self,level ,event);
+                }
+            } else if (m_root) {    // 如果没有appender，就使用root的appender
+                m_root->log(level, event);
             }
         }
     }
@@ -387,12 +392,72 @@ namespace sylar {
     LoggerManager::LoggerManager() {
         m_root.reset(new Logger);
         m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));
+
+        init();
     }
 
+    /**
+     * 如果name不为空，则返回对应的logger
+     * 如果 name 为空，则创建一个新的logger并返回
+     * @param name
+     * @return
+     */
     Logger::ptr LoggerManager::getLogger(const std::string &name) {
         auto it = m_loggers.find(name);
-        return it == m_loggers.end() ? m_root : it->second;
+        if (it != m_loggers.end()) {
+            return it->second;
+        }
+        Logger::ptr logger(new Logger(name));
+        logger->m_root = m_root;    // 新定义的没有 appender，但是可以继承 root 的 appender
+        m_loggers[name] = logger;
+        return logger;
     }
 
+    struct LogAppenderDefine {
+        int type = 0; // 1 File, 2 Stdout
+        LogLevel::Level level = LogLevel::UNKNOWN;
+        std::string formatter;  // 具体的文件格式
+        std::string file;
+
+        bool operator==(const LogAppenderDefine &other) const { // 要进行判断
+            return type == other.type
+                   && level == other.level
+                   && formatter == other.formatter
+                   && file == other.file;
+        }
+    };
+
+    struct LogDefine {
+        std::string name;
+        LogLevel::Level level = LogLevel::UNKNOWN;
+        std::string formatter;
+        std::vector<LogAppenderDefine> appenders;
+
+        bool operator==(const LogDefine &other) const {
+            return name == other.name
+                   && level == other.level
+                   && formatter == other.formatter
+                   && appenders == other.appenders;
+        }
+
+        bool operator<(const LogDefine &other) const {
+            return name < other.name;
+        }
+    };
+
+    sylar::ConfigVar<std::set<LogDefine>> g_log_defines =
+            sylar::Config::Lookup("logs", std::set<LogDefine>(), "logs config");
+
+    // todo 在 main 之前之后做一些动作，定义一些全局对象，会在 main 之前调用其构造函数
+    struct LogIniter {
+        LogIniter(){
+            g_log_defines.addListener(0xF1E231, [](const std::set<LogDefine>& old_value
+                , const std::set<LogDefine>& new_value){
+            });
+        }
+    };
+
+    void LoggerManager::init() {
+    }
 
 }
