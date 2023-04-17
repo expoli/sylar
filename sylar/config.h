@@ -44,7 +44,7 @@ namespace sylar {
 
         virtual std::string toString() = 0;
         virtual bool fromString(const std::string& val) = 0;    // 解析，初始化到自己的成员里面去
-//        virtual std::string getTypeName() const = 0;
+        virtual std::string getTypeName() const = 0;
     protected:
         std::string m_name;
         std::string m_description;
@@ -266,7 +266,7 @@ namespace sylar {
 //                return boost::lexical_cast<std::string>(m_val);
                 return ToStr()(m_val);
             } catch (std::exception& e) {
-                SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::toString exception"
+                SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::toString exception "
                     << e.what() << " convert: " << typeid(m_val).name() << " to string";
             }
             return "";
@@ -278,14 +278,16 @@ namespace sylar {
                 setValue(FromStr()(val));
                 return true;
             } catch (std::exception& e) {
-                SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::FromString exception"
-                    << e.what() << " convert: string to " << typeid(m_val).name();
+                SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "ConfigVar::FromString exception "
+                    << e.what() << " convert: string to " << typeid(m_val).name()
+                    << " -\n" << val;
             }
             return false;
         }
 
         const T getValue() const { return m_val; }
         void setValue(const T& v) { m_val = v; }
+        std::string getTypeName() const override { return typeid(T).name(); }
     private:
         T m_val;
     };
@@ -297,6 +299,19 @@ namespace sylar {
         template<class T>
         static typename ConfigVar<T>::ptr Lookup(const std::string& name
                 , const T& default_value, const std::string& description = "") {   // 如果有的话是返回，没有的话是创建
+            auto it = s_datas.find(name);
+            if (it != s_datas.end()) {
+                auto tmp = std::dynamic_pointer_cast<ConfigVar<T>>(it->second); // 利用dynamic_pointer_cast进行类型转换，如果同名的不是T类型的，就会返回空
+                if (tmp) {
+                    SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "Lookup name " << name << " exists";
+                    return tmp;
+                } else {
+                    SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "Lookup name " << name << " exists but type not "
+                        << typeid(T).name() << " real_type=" << it->second->getTypeName()
+                        << "\n" << it->second->toString();
+                    return nullptr;
+                }
+            }
             auto tmp  = Lookup<T>(name);
             if (tmp) {
                 SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "Lookup name " << name << " exists";
