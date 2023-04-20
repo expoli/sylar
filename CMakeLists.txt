@@ -11,24 +11,35 @@ set(LIB_SRC
         sylar/log.cpp
         sylar/util.cpp
         sylar/config.cpp
-        )
+        sylar/thread.cpp
+        sylar/sylar.h)
 
 find_package(yaml-cpp REQUIRED )
 # ${YAML_CPP_INCLUDE_DIR}
 # ${YAML_CPP_LIBRARIES}
 
-add_library(sylar SHARED ${LIB_SRC} ${YAML_CPP_LIBRARIES})
+set(LIB_LIB
+        sylar
+        pthread
+        ${YAML_CPP_LIBRARIES}
+        )
+
+add_library(sylar SHARED ${LIB_SRC} )
 force_redefine_file_macro_for_sources(sylar)    # __FILE__ 重定义为 __FILE__ 变为相对路径
 
 add_executable(test tests/test.cpp)
 add_dependencies(test sylar)
 force_redefine_file_macro_for_sources(test) # __FILE__
-target_link_libraries(test sylar ${YAML_CPP_LIBRARIES})
+target_link_libraries(test ${LIB_LIB})
 
 add_executable(test_config tests/test_config.cpp)
 add_dependencies(test_config sylar)
 force_redefine_file_macro_for_sources(test_config)  # __FILE__
-target_link_libraries(test_config sylar ${YAML_CPP_LIBRARIES})
+target_link_libraries(test_config ${LIB_LIB})
+
+add_executable(test_thread tests/test_thread.cpp)
+add_dependencies(test_thread sylar)
+target_link_libraries(test_thread ${LIB_LIB})
 
 set(CMAKE_CXX_STANDARD 11)
 
