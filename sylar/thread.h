@@ -15,6 +15,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <semaphore.h>
+#include <stdint.h>
 
 // c++11 之前 使用 pthread_xxx
 // C++11 之后 使用 std::thread, 低层也是用 pthread_xxx
@@ -22,6 +24,157 @@
 // 我们高并发场景，读多写少，所以使用 pthread 的读写锁，性能上兼顾
 
 namespace sylar{
+
+class Semaphore{
+public:
+    Semaphore(uint32_t count = 0);
+    ~Semaphore();
+
+    void wait();    // -1
+    void notify();  // +1
+
+private:
+    Semaphore(const Semaphore&) = delete;   // 禁止默认拷贝
+    Semaphore(const Semaphore&&) = delete;
+    Semaphore& operator=(const Semaphore&) = delete;
+
+private:
+    sem_t m_semaphore;
+};
+
+template<class T>   // 互斥量一般都是局部作用范围的，为了防止忘记解锁，我们使用 RAII
+class ScopedLockImpl{   // 构造函数加锁、析构函数解锁，这样就不用担心忘记解锁了
+public:
+    ScopedLockImpl(T& mutex)    // 互斥量很多，提供一个模板，可以传入任何互斥量，具体是什么我们不关心
+        :m_mutex(mutex) {
+        m_mutex.lock();
+        m_locked = true;
+    }
+
+    ~ScopedLockImpl() {
+        unlock();
+    }
+
+    void lock() {
+        if(!m_locked) {
+            m_mutex.lock();
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if(m_locked) {
+            m_mutex.unlock();
+            m_locked = false;
+        }
+    }
+
+private:
+    T& m_mutex; // 互斥量引用
+    bool m_locked;
+};
+
+template<class T>
+class ReadScopedLockImpl{
+public:
+    ReadScopedLockImpl(T& mutex)
+        :m_mutex(mutex) {
+        m_mutex.rdlock();
+        m_locked = true;
+    }
+
+    ~ReadScopedLockImpl() {
+        unlock();
+    }
+
+    void lock() {
+        if(!m_locked) {
+            m_mutex.rdlock();
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if(m_locked) {
+            m_mutex.rdunlock();
+            m_locked = false;
+        }
+    }
+private:
+    T& m_mutex;
+    bool m_locked;
+};
+
+template<class T>
+class WriteScopedLockImpl{
+public:
+    WriteScopedLockImpl(T& mutex)
+        :m_mutex(mutex) {
+        m_mutex.wrlock();
+        m_locked = true;
+    }
+
+    ~WriteScopedLockImpl() {
+        unlock();
+    }
+
+    void lock() {
+        if(!m_locked) {
+            m_mutex.wrlock();
+            m_locked = true;
+        }
+    }
+
+    void unlock() {
+        if(m_locked) {
+            m_mutex.unlock();
+            m_locked = false;
+        }
+    }
+private:
+    T& m_mutex;
+    bool m_locked;
+};
+
+class RWMutex{
+public:
+    typedef ScopedLockImpl<RWMutex> ReadLock; // 读写锁的锁类型
+    typedef ScopedLockImpl<RWMutex> WriteLock;
+    RWMutex() {
+        pthread_rwlock_init(&m_lock, nullptr);
+    }
+
+    ~RWMutex() {
+        pthread_rwlock_destroy(&m_lock);
+    }
+
+    void lock() {
+        pthread_rwlock_wrlock(&m_lock);
+    }
+
+    void unlock() {
+        pthread_rwlock_unlock(&m_lock);
+    }
+
+    void rdlock() {
+        pthread_rwlock_rdlock(&m_lock);
+    }
+
+    void wrlock() {
+        pthread_rwlock_wrlock(&m_lock);
+    }
+
+    void rdunlock() {
+        pthread_rwlock_unlock(&m_lock);
+    }
+
+    pthread_rwlock_t* get() { return &m_lock; }
+
+private:
+    pthread_rwlock_t m_lock;
+};
+
+// 部分读写锁
 
 class Thread {
 public:
@@ -59,6 +212,7 @@ private:
     std::function<void()> m_cb;
     std::string m_name;
 
+    Semaphore m_semaphore;  // 信号量，用于线程同步
 };
 
 }

@@ -19,6 +19,29 @@ static thread_local std::string t_thread_name = "UNKNOWN";  // 用于保存当�
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");  // 系统都放在 system 中
 
+Semaphore::Semaphore(uint32_t count) {
+    if(sem_init(&m_semaphore, 0, count)) {
+        throw std::logic_error("sem_init error");
+    }
+}
+
+Semaphore::~Semaphore() {
+    sem_destroy(&m_semaphore);
+}
+
+void Semaphore::wait() {
+    if(sem_wait(&m_semaphore)) {   // 一直等
+        throw std::logic_error("sem_wait error");
+    }
+}
+
+void Semaphore::notify() {
+    if(sem_post(&m_semaphore)) {
+        throw std::logic_error("sem_post error");
+    }
+}
+
+
 Thread *Thread::GetThis() {
     return t_thread;
 }
@@ -49,6 +72,8 @@ Thread::Thread(std::function<void()> cb, const std::string &name)
             << " name=" << name;
         throw std::logic_error("pthread_create error");
     }
+    // 有可能我们的构造函数返回了，线程还没有开始运行，所以我们需要等待线程运行
+    m_semaphore.wait(); // 一直等到线程运行起来，再出构造函数
 }
 
 Thread::~Thread() {
@@ -78,6 +103,8 @@ void *Thread::run(void *arg) {
 
     std::function<void()> cb;
     cb.swap(thread->m_cb);  // 交换，避免拷贝，当函数中拥有智能指针的时候，会一直出现不被释放掉的情况
+
+    thread->m_semaphore.notify();  // 通知构造函数，线程已经运行起来了
 
     cb();   // 执行函数
     return nullptr;

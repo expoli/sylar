@@ -120,6 +120,11 @@ static Logger::ptr g_log = SYLAR_LOG_NAME("system");
 
 Thead, Mutex, RWMutex
 
+pthread pthread_create
+
+互斥量 mutex
+信号量 semaphore
+
 ## socket 函数库
 
 ## http 协议开发
