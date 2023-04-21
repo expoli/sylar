@@ -213,9 +213,10 @@ namespace sylar {
     }
 
     std::string Logger::toYamlString() {
+        MutexType::Lock lock(m_mutex); // 加锁
         YAML::Node node;
         node["name"] = m_name;
-        node["level"] = LogLevel::ToString(m_level);
+        node["level"] = LogLevel::ToString(m_level);    // 可以不用加锁，因为 m_level 是原子变量
         if (m_formatter) {
             node["formatter"] = m_formatter->getPattern();
         }
@@ -229,8 +230,10 @@ namespace sylar {
     }
 
     void Logger::setFormatter(LogFormatter::ptr val) {
+        MutexType::Lock  lock(m_mutex); // 加锁
         m_formatter = val;
         for (auto &i : m_appenders) {
+            MutexType::Lock  ll(i->m_mutex);    // 友函数、加锁，对 i 加锁
             if (!i->m_hasFormatter){
                 i->m_formatter = m_formatter;
             }
@@ -246,10 +249,11 @@ namespace sylar {
                       << std::endl;
             return;
         }
-        setFormatter(new_val);
+        setFormatter(new_val);  // 使用的是上面的方法，不需要显式加锁
     }
 
     LogFormatter::ptr Logger::getFormatter() {
+        MutexType::Lock lock(m_mutex); // 加锁
         return m_formatter;
     }
 
@@ -262,14 +266,22 @@ namespace sylar {
         }
     }
 
+    LogFormatter::ptr LogAppender::getFormatter() {
+            MutexType::Lock lock(m_mutex); // 加锁
+            return m_formatter;
+    }
+
     void Logger::addAppender(LogAppender::ptr appender) {
+        MutexType::Lock lock(m_mutex); // 加锁
         if (!appender->getFormatter()){
+            MutexType::Lock ll(appender->m_mutex);   // 修改 appender 的 formatter，需要加锁
             appender->m_formatter = m_formatter;    // 如果appender没有formatter，那么就使用logger的formatter
         }
         m_appenders.push_back(appender);
     }
 
     void Logger::delAppender(LogAppender::ptr appender) {
+        MutexType::Lock lock(m_mutex); // 加锁
         for (auto it = m_appenders.begin(); it != m_appenders.end(); ++it) {
             if (*it == appender) {
                 m_appenders.erase(it);
@@ -279,12 +291,14 @@ namespace sylar {
     }
 
     void Logger::clearAppenders() {
+        MutexType::Lock lock(m_mutex);
         m_appenders.clear();
     }
 
     void Logger::log(LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) { // 如果原来没有设置过level，那么默认是DEBUG，最低级别
             auto self = shared_from_this();
+            MutexType::Lock lock(m_mutex);
             if (!m_appenders.empty()) { // 如果有appender
                 for (auto &i: m_appenders) {
                     i->log(self,level ,event);
@@ -322,11 +336,13 @@ namespace sylar {
 
     void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) {
+            MutexType::Lock lock(m_mutex);
             m_filestream << m_formatter->format(logger, level, event);
         }
     }
 
     std::string FileLogAppender::toYamlString() {
+        MutexType::Lock lock(m_mutex);
         YAML::Node node;
         node["type"] = "FileLogAppender";
         if (m_level != LogLevel::UNKNOWN) {
@@ -341,6 +357,7 @@ namespace sylar {
     }
 
     bool FileLogAppender::reopen() {
+        MutexType::Lock lock(m_mutex);
         if (m_filestream) {
             m_filestream.close();
         }
@@ -350,6 +367,7 @@ namespace sylar {
 
     void StdoutLogAppender::log(std::shared_ptr<Logger> logger,LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) {
+            MutexType::Lock lock(m_mutex);
             std::cout << m_formatter->format(logger, level, event);
         }
     }
@@ -503,6 +521,7 @@ namespace sylar {
      * @return
      */
     Logger::ptr LoggerManager::getLogger(const std::string &name) {
+        MutexType::Lock lock(m_mutex);
         auto it = m_loggers.find(name);
         if (it != m_loggers.end()) {
             return it->second;
@@ -710,6 +729,7 @@ namespace sylar {
     static LogIniter __log_init;    // 在 main 之前调用
 
     std::string LoggerManager::toYamlString() {
+        MutexType::Lock lock(m_mutex);
         YAML::Node node;
         for (auto &i : m_loggers) {
             node.push_back(YAML::Load(i.second->toYamlString()));

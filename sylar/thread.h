@@ -136,6 +136,45 @@ private:
     bool m_locked;
 };
 
+// 互斥量
+class Mutex{
+public:
+    typedef ScopedLockImpl<Mutex> Lock; // 互斥量的锁类型
+    Mutex() {
+        pthread_mutex_init(&m_mutex, nullptr);
+    }
+
+    ~Mutex() {
+        pthread_mutex_destroy(&m_mutex);
+    }
+
+    void lock() {
+        pthread_mutex_lock(&m_mutex);
+    }
+
+    void unlock() {
+        pthread_mutex_unlock(&m_mutex);
+    }
+
+    pthread_mutex_t* get() { return &m_mutex; }
+
+private:
+    pthread_mutex_t m_mutex;
+};
+
+/**
+ * @brief 空互斥量，不加锁, 用于调试
+ */
+class NullMutex{
+public:
+    typedef ScopedLockImpl<NullMutex> Lock;
+    NullMutex() {}
+    ~NullMutex() {}
+
+    void lock() {}
+    void unlock() {}
+};
+
 class RWMutex{
 public:
     typedef ScopedLockImpl<RWMutex> ReadLock; // 读写锁的锁类型
@@ -174,7 +213,19 @@ private:
     pthread_rwlock_t m_lock;
 };
 
-// 部分读写锁
+class NullRWMutex{
+public:
+    typedef ScopedLockImpl<NullRWMutex> ReadLock;
+    typedef ScopedLockImpl<NullRWMutex> WriteLock;
+    NullRWMutex() {}
+    ~NullRWMutex() {}
+
+    void lock() {}
+    void unlock() {}
+    void rdlock() {}
+    void wrlock() {}
+    void rdunlock() {}
+};
 
 class Thread {
 public:

@@ -22,6 +22,7 @@
 #include <map>
 #include "singleton.h"
 #include "util.h"
+#include "thread.h"
 
 #define SYLAR_LOG_LEVEL(logger, level) \
     if(logger->getLevel() <= level) \
@@ -147,20 +148,22 @@ namespace sylar {
     friend class Logger;
     public:
         typedef std::shared_ptr<LogAppender> ptr; // 智能指针, 用于管理日志输出地对象的生命周期, 防止内存泄漏, 保证程序的健壮性
+        typedef Mutex MutexType;
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
 
         virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
-        virtual std::string toYamlString() = 0; // 纯虚函数
+        virtual std::string toYamlString() = 0; // 纯虚函数, 需要加锁、可能修改配置
 
         void setFormatter(LogFormatter::ptr val);
-        LogFormatter::ptr getFormatter() const { return m_formatter; }
+        LogFormatter::ptr getFormatter();
 
-        LogLevel::Level getLevel() const { return m_level; }
+        LogLevel::Level getLevel() const { return m_level; }    // 原子类型，基本类型的线程安全可能不准
         void setLevel(LogLevel::Level val) { m_level = val; }
     protected:
         LogLevel::Level m_level = LogLevel::DEBUG;    // 日志级别
         bool m_hasFormatter = false;    // 是否有日志格式器
-        LogFormatter::ptr m_formatter;  // 日志格式器
+        MutexType m_mutex;  // 互斥锁, 写多
+        LogFormatter::ptr m_formatter;  // 日志格式器，多个成员的线程安全可能会导致严重的线程错误（设置完一个，还没来得及设置另一个，另一个就被读取了）
     };
 
     // 日志器
@@ -168,6 +171,7 @@ namespace sylar {
         friend class LoggerManager;
     public:
         typedef std::shared_ptr<Logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
+        typedef Mutex MutexType;
 
         Logger(const std::string &name = "root");
         void log(LogLevel::Level level, LogEvent::ptr event);
@@ -194,6 +198,7 @@ namespace sylar {
     private:
         std::string m_name;                         // 日志器名称
         LogLevel::Level m_level;                    // 日志级别
+        MutexType m_mutex;                              // 互斥锁, 在使用的时候可能会修改它的 appender
         std::list<LogAppender::ptr> m_appenders;    // appender 集合
         LogFormatter::ptr m_formatter;              // 日志格式器
         Logger::ptr m_root;                         // 根日志器
@@ -226,6 +231,7 @@ namespace sylar {
     // 日志管理器
     class LoggerManager {
     public:
+        typedef Mutex MutexType;
         LoggerManager();
         Logger::ptr getLogger(const std::string &name);
 
@@ -234,6 +240,7 @@ namespace sylar {
 
         std::string toYamlString();
     private:
+        MutexType m_mutex; // 互斥锁，操作 m_loggers
         std::map<std::string, Logger::ptr> m_loggers; // 日志器集合
         Logger::ptr m_root; // 根日志器
     };

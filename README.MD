@@ -125,6 +125,8 @@ pthread pthread_create
 互斥量 mutex
 信号量 semaphore
 
+整合 log
+
 ## socket 函数库
 
 ## http 协议开发
