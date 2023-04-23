@@ -753,7 +753,7 @@ namespace sylar {
     // todo 在 main 之前之后做一些动作，定义一些全局对象，会在 main 之前调用其构造函数
     struct LogIniter {
         LogIniter(){
-            g_log_defines->addListener(0xF1E231, [](const std::set<LogDefine>& old_value
+            g_log_defines->addListener([](const std::set<LogDefine>& old_value
                 , const std::set<LogDefine>& new_value){
                 SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "on_logger_conf_changed";
                 // 新增

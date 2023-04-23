@@ -26,28 +26,26 @@
 
 namespace sylar{
 
-class Semaphore{
+class Semaphore {
 public:
     Semaphore(uint32_t count = 0);
     ~Semaphore();
 
-    void wait();    // -1
-    void notify();  // +1
-
+    void wait();
+    void notify();
 private:
-    Semaphore(const Semaphore&) = delete;   // 禁止默认拷贝
+    Semaphore(const Semaphore&) = delete;
     Semaphore(const Semaphore&&) = delete;
     Semaphore& operator=(const Semaphore&) = delete;
-
 private:
     sem_t m_semaphore;
 };
 
-template<class T>   // 互斥量一般都是局部作用范围的，为了防止忘记解锁，我们使用 RAII
-class ScopedLockImpl{   // 构造函数加锁、析构函数解锁，这样就不用担心忘记解锁了
+template<class T>
+struct ScopedLockImpl {
 public:
-    ScopedLockImpl(T& mutex)    // 互斥量很多，提供一个模板，可以传入任何互斥量，具体是什么我们不关心
-        :m_mutex(mutex) {
+    ScopedLockImpl(T& mutex)
+            :m_mutex(mutex) {
         m_mutex.lock();
         m_locked = true;
     }
@@ -69,17 +67,16 @@ public:
             m_locked = false;
         }
     }
-
 private:
-    T& m_mutex; // 互斥量引用
+    T& m_mutex;
     bool m_locked;
 };
 
 template<class T>
-class ReadScopedLockImpl{
+struct ReadScopedLockImpl {
 public:
     ReadScopedLockImpl(T& mutex)
-        :m_mutex(mutex) {
+            :m_mutex(mutex) {
         m_mutex.rdlock();
         m_locked = true;
     }
@@ -97,7 +94,7 @@ public:
 
     void unlock() {
         if(m_locked) {
-            m_mutex.rdunlock();
+            m_mutex.unlock();
             m_locked = false;
         }
     }
@@ -107,10 +104,10 @@ private:
 };
 
 template<class T>
-class WriteScopedLockImpl{
+struct WriteScopedLockImpl {
 public:
     WriteScopedLockImpl(T& mutex)
-        :m_mutex(mutex) {
+            :m_mutex(mutex) {
         m_mutex.wrlock();
         m_locked = true;
     }
@@ -137,10 +134,9 @@ private:
     bool m_locked;
 };
 
-// 互斥量
-class Mutex{
+class Mutex {
 public:
-    typedef ScopedLockImpl<Mutex> Lock; // 互斥量的锁类型
+    typedef ScopedLockImpl<Mutex> Lock;
     Mutex() {
         pthread_mutex_init(&m_mutex, nullptr);
     }
@@ -156,9 +152,6 @@ public:
     void unlock() {
         pthread_mutex_unlock(&m_mutex);
     }
-
-    pthread_mutex_t* get() { return &m_mutex; }
-
 private:
     pthread_mutex_t m_mutex;
 };
@@ -171,29 +164,21 @@ public:
     typedef ScopedLockImpl<NullMutex> Lock;
     NullMutex() {}
     ~NullMutex() {}
-
     void lock() {}
     void unlock() {}
 };
 
-class RWMutex{
+class RWMutex {
 public:
-    typedef ScopedLockImpl<RWMutex> ReadLock; // 读写锁的锁类型
-    typedef ScopedLockImpl<RWMutex> WriteLock;
+    typedef ReadScopedLockImpl<RWMutex> ReadLock;
+    typedef WriteScopedLockImpl<RWMutex> WriteLock;
+
     RWMutex() {
         pthread_rwlock_init(&m_lock, nullptr);
     }
 
     ~RWMutex() {
         pthread_rwlock_destroy(&m_lock);
-    }
-
-    void lock() {
-        pthread_rwlock_wrlock(&m_lock);
-    }
-
-    void unlock() {
-        pthread_rwlock_unlock(&m_lock);
     }
 
     void rdlock() {
@@ -204,28 +189,25 @@ public:
         pthread_rwlock_wrlock(&m_lock);
     }
 
-    void rdunlock() {
+    void unlock() {
         pthread_rwlock_unlock(&m_lock);
     }
-
-    pthread_rwlock_t* get() { return &m_lock; }
-
 private:
     pthread_rwlock_t m_lock;
 };
 
-class NullRWMutex{
+
+class NullRWMutex {
 public:
-    typedef ScopedLockImpl<NullRWMutex> ReadLock;
-    typedef ScopedLockImpl<NullRWMutex> WriteLock;
+    typedef ReadScopedLockImpl<NullMutex> ReadLock;
+    typedef WriteScopedLockImpl<NullMutex> WriteLock;
+
     NullRWMutex() {}
     ~NullRWMutex() {}
 
-    void lock() {}
-    void unlock() {}
     void rdlock() {}
     void wrlock() {}
-    void rdunlock() {}
+    void unlock() {}
 };
 
 
@@ -240,7 +222,7 @@ public:
  * 适用于冲突时间短的场景，自旋锁一般不会阻塞线程，
  * 而是循环检测锁是否可用，所以如果冲突时间长，自旋锁的效率就会非常低。
  */
-class Spinlock{
+class Spinlock {
 public:
     typedef ScopedLockImpl<Spinlock> Lock;
     Spinlock() {
@@ -262,13 +244,12 @@ private:
     pthread_spinlock_t m_mutex;
 };
 
-class CASLock{
+class CASLock {
 public:
     typedef ScopedLockImpl<CASLock> Lock;
     CASLock() {
         m_mutex.clear();
     }
-
     ~CASLock() {
     }
 
