@@ -116,7 +116,7 @@ static Logger::ptr g_log = SYLAR_LOG_NAME("system");
 - 不同 log 使用不同的配置
   - （fix 原始根据文件定义 appender 的日志级别为 unknown 所以无法输出日志的 bug）
 
-## 协程库封装
+## 线程库封装
 
 Thead, Mutex, RWMutex
 
@@ -136,6 +136,11 @@ pthread pthread_create
   - 读多写少的情况下，读写锁性能更好
   - 要写、要读、遍历配置的时候，可以修改配置
   - 我们可以将配置输出到文件里、修改完之后再反序列化回去
+
+## 协程库封装
+定义协程接口
+ucontext_t.
+制定一些自己的宏、方便调试
 
 ## socket 函数库
 

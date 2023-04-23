@@ -41,6 +41,11 @@ add_executable(test_thread tests/test_thread.cpp)
 add_dependencies(test_thread sylar)
 target_link_libraries(test_thread ${LIB_LIB})
 
+add_executable(test_util tests/test_util.cpp)
+add_dependencies(test_util sylar)
+force_redefine_file_macro_for_sources(test_util)  # __FILE__
+target_link_libraries(test_util ${LIB_LIB})
+
 set(CMAKE_CXX_STANDARD 11)
 
 set(EXECUTABLE_OUTPUT_PATH  ${PROJECT_SOURCE_DIR}/bin)
