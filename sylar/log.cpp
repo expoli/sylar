@@ -331,10 +331,38 @@ namespace sylar {
 
     FileLogAppender::FileLogAppender(const std::string &filename)
             : m_filename(filename) {
+        {
+            MutexType::Lock lock(m_mutex); // 加锁
+            m_file_inotify_fd = inotify_init();
+            if(m_file_inotify_fd < 0) {
+                std::cout << "inotify_init error" << std::endl;
+                throw std::logic_error("inotify_init error");
+            }
+        }
+
         reopen();
+
+        {
+            MutexType::Lock lock(m_mutex); // 加锁
+            m_epoll_fd = epoll_create(1);
+            if(m_epoll_fd < 0) {
+                std::cout << "epoll_create error" << std::endl;
+                throw std::logic_error("epoll_create error");
+            }
+            struct epoll_event event{};
+            event.events = EPOLLMSG | EPOLLWAKEUP | EPOLLIN | EPOLLOUT;    // 文件监视器消息可读, 只触发一次, 边缘触发
+            event.data.fd = m_file_inotify_fd;
+            epoll_ctl(m_epoll_fd, EPOLL_CTL_ADD, m_file_inotify_fd, &event);
+        }
     }
 
     void FileLogAppender::log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
+        m_deleted = checkFileStatus();
+        uint64_t now = time(nullptr);   // 每秒打开一次、同时配合事件机制，每秒检查一次文件是否被删除
+        if( m_last_time != now ||  m_deleted) {
+            m_last_time = now;
+            reopen();
+        }
         if (level >= m_level) {
             MutexType::Lock lock(m_mutex);
             m_filestream << m_formatter->format(logger, level, event);
@@ -356,12 +384,73 @@ namespace sylar {
         return ss.str();
     }
 
+    bool FileLogAppender::checkFileStatus() {
+        MutexType::Lock lock(m_mutex);
+
+        // 读取通知事件
+        int len = epoll_wait(m_epoll_fd, m_epoll_events, MAX_EVENT_NUMBER, 0);
+        if(len == -1) {
+            throw std::logic_error("Failed to read events.");
+        }
+        if(len == 0) {
+            return false;
+        }
+//        std::cout << "len: " << len << std::endl;
+
+        // 遍历缓冲区中的所有事件
+        int i = 0;
+        for(; i < len; i++) {
+            // 如果是文件监视器发生的事件
+            std::cout << "m_epoll_events[i].data.fd: " << m_epoll_events[i].data.fd << std::endl;
+            if(m_epoll_events[i].data.fd == m_file_inotify_fd) {
+                // 创建一个缓冲区，用于存储通知事件
+                const int BUF_LEN = 1024;
+                char buffer[BUF_LEN];
+                memset(buffer, 0, BUF_LEN);
+
+                // 读取文件监视器的事件
+                int read_len = read(m_file_inotify_fd, buffer, BUF_LEN);
+                if(read_len == -1) {
+                    throw std::logic_error("Failed to read events.");
+                }
+
+                // 遍历所有事件
+                int j = 0;
+                while(j < read_len) {
+                    // 读取事件的结构体
+                    auto *event = (struct inotify_event *)&buffer[j];
+//                    std::cout << "event->mask: " << event->mask << std::endl;
+                    // 如果是删除事件
+                    if(event->mask & IN_DELETE_SELF
+                    || event->mask & IN_MOVE_SELF
+                    || event->mask & IN_DELETE
+                    || event->mask & IN_MOVE) {
+                        std::cout << "Logfile File " << m_filename << " has been deleted." << std::endl;
+                        m_deleted = true;
+                        m_filestream.close();
+                        return true;
+                    }
+                    j += sizeof(struct inotify_event) + event->len;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool FileLogAppender::reopen() {
         MutexType::Lock lock(m_mutex);
         if (m_filestream) {
             m_filestream.close();
         }
         m_filestream.open(m_filename, std::ios::app);   // 以追加的方式打开文件，日志不会被覆盖
+        // 注册一个监视器，监视对应文件的删除事件，每次删除之后都需要重新注册
+        m_file_inotify_wd = inotify_add_watch(m_file_inotify_fd, m_filename.c_str(), IN_ALL_EVENTS ^ (IN_ACCESS | IN_MODIFY | IN_ATTRIB | IN_OPEN | IN_CLOSE));
+        if(m_file_inotify_wd < 0) {
+            std::cout << "inotify_add_watch error" << std::endl;
+            throw std::logic_error("inotify_add_watch error");
+        }
+        m_deleted = false;
         return !!m_filestream;
     }
 

@@ -20,6 +20,8 @@
 #include <sstream>
 #include <cstdarg>
 #include <map>
+#include <sys/inotify.h>
+#include <sys/epoll.h>
 #include "singleton.h"
 #include "util.h"
 #include "thread.h"
@@ -148,7 +150,7 @@ namespace sylar {
     friend class Logger;
     public:
         typedef std::shared_ptr<LogAppender> ptr; // 智能指针, 用于管理日志输出地对象的生命周期, 防止内存泄漏, 保证程序的健壮性
-        typedef Mutex MutexType;
+        typedef Spinlock MutexType;
         virtual ~LogAppender() {}   // 虚析构函数, 保证子类析构时调用父类析构函数, 释放父类资源, 防止内存泄漏, 保证程序的健壮性
 
         virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) = 0; // 纯虚函数, 保证子类必须实现该函数, 防止内存泄漏, 保证程序的健壮性
@@ -171,7 +173,7 @@ namespace sylar {
         friend class LoggerManager;
     public:
         typedef std::shared_ptr<Logger> ptr; // 智能指针, 用于管理日志器对象的生命周期, 防止内存泄漏, 保证程序的健壮性
-        typedef Mutex MutexType;
+        typedef Spinlock MutexType;
 
         Logger(const std::string &name = "root");
         void log(LogLevel::Level level, LogEvent::ptr event);
@@ -223,15 +225,24 @@ namespace sylar {
 
         // 重新打开文件, 文件打开成功返回true, 否则返回false
         bool reopen(); // 重新打开文件
+
+        bool checkFileStatus(); // 检查文件状态
     private:
         std::string m_filename; // 文件名
         std::ofstream m_filestream; // 文件流
+        int m_file_inotify_fd = -1; // 文件描述符
+        int m_file_inotify_wd = -1; // 监视器
+        int m_epoll_fd = -1; // epoll 文件描述符
+        static const int MAX_EVENT_NUMBER = 1024; //最大事件数
+        struct epoll_event m_epoll_events[MAX_EVENT_NUMBER]; // epoll 事件
+        bool m_deleted = false; // 是否需要重新打开文件
+        uint64_t m_last_time = 0; // 上次打开文件的时间
     };
 
     // 日志管理器
     class LoggerManager {
     public:
-        typedef Mutex MutexType;
+        typedef Spinlock MutexType;
         LoggerManager();
         Logger::ptr getLogger(const std::string &name);
 

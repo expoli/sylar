@@ -16,7 +16,8 @@
 #include <memory>
 #include <string>
 #include <semaphore.h>
-#include <stdint.h>
+#include <cstdint>
+#include <atomic>
 
 // c++11 之前 使用 pthread_xxx
 // C++11 之后 使用 std::thread, 低层也是用 pthread_xxx
@@ -225,6 +226,61 @@ public:
     void rdlock() {}
     void wrlock() {}
     void rdunlock() {}
+};
+
+
+/**
+ * @brief 自旋锁
+ * 自旋锁是一种用于保护共享资源的锁，它的优点是能减少线程切换状态的开销。
+ * 但是，如果一直旋下去，自旋开销会比线程切换状态的开销大得多。
+ *
+ * 适用场景就很简单了：并发不能太高，避免一直自旋不成功；
+ * 线程执行的同步任务不能太长，避免一直自旋不成功。
+ *
+ * 适用于冲突时间短的场景，自旋锁一般不会阻塞线程，
+ * 而是循环检测锁是否可用，所以如果冲突时间长，自旋锁的效率就会非常低。
+ */
+class Spinlock{
+public:
+    typedef ScopedLockImpl<Spinlock> Lock;
+    Spinlock() {
+        pthread_spin_init(&m_mutex, 0);
+    }
+
+    ~Spinlock() {
+        pthread_spin_destroy(&m_mutex);
+    }
+
+    void lock() {
+        pthread_spin_lock(&m_mutex);
+    }
+
+    void unlock() {
+        pthread_spin_unlock(&m_mutex);
+    }
+private:
+    pthread_spinlock_t m_mutex;
+};
+
+class CASLock{
+public:
+    typedef ScopedLockImpl<CASLock> Lock;
+    CASLock() {
+        m_mutex.clear();
+    }
+
+    ~CASLock() {
+    }
+
+    void lock() {
+        while(std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire));
+    }
+
+    void unlock() {
+        std::atomic_flag_clear_explicit(&m_mutex, std::memory_order_release);
+    }
+private:
+    volatile std::atomic_flag m_mutex;  // 原子操作, 每次都取内存
 };
 
 class Thread {

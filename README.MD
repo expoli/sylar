@@ -125,7 +125,13 @@ pthread pthread_create
 互斥量 mutex
 信号量 semaphore
 
-整合 log
+- 整合 log
+  - Logger, appender, manager
+- 锁的性能
+  - 自旋 12M 
+  - 空锁 30M 
+  - 互斥 5M
+  - CAS 6M
 
 ## socket 函数库
 

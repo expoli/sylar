@@ -11,7 +11,7 @@ logs:
         level: debug
   - name: system
     level: debug
-    formatter: "%d%T[%p]%T%m%n"
+    formatter: "%d%T[%p]%T%m%n "
     appenders:
       - type: FileLogAppender
         file: system.txt
