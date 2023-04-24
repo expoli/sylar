@@ -24,19 +24,25 @@
 // std::thread 没有读写锁，不太使用
 // 我们高并发场景，读多写少，所以使用 pthread 的读写锁，性能上兼顾
 
-namespace sylar{
+namespace sylar {
 
 class Semaphore {
 public:
     Semaphore(uint32_t count = 0);
+
     ~Semaphore();
 
     void wait();
+
     void notify();
+
 private:
-    Semaphore(const Semaphore&) = delete;
-    Semaphore(const Semaphore&&) = delete;
-    Semaphore& operator=(const Semaphore&) = delete;
+    Semaphore(const Semaphore &) = delete;
+
+    Semaphore(const Semaphore &&) = delete;
+
+    Semaphore &operator=(const Semaphore &) = delete;
+
 private:
     sem_t m_semaphore;
 };
@@ -44,8 +50,8 @@ private:
 template<class T>
 struct ScopedLockImpl {
 public:
-    ScopedLockImpl(T& mutex)
-            :m_mutex(mutex) {
+    ScopedLockImpl(T &mutex)
+            : m_mutex(mutex) {
         m_mutex.lock();
         m_locked = true;
     }
@@ -67,16 +73,17 @@ public:
             m_locked = false;
         }
     }
+
 private:
-    T& m_mutex;
+    T &m_mutex;
     bool m_locked;
 };
 
 template<class T>
 struct ReadScopedLockImpl {
 public:
-    ReadScopedLockImpl(T& mutex)
-            :m_mutex(mutex) {
+    ReadScopedLockImpl(T &mutex)
+            : m_mutex(mutex) {
         m_mutex.rdlock();
         m_locked = true;
     }
@@ -98,16 +105,17 @@ public:
             m_locked = false;
         }
     }
+
 private:
-    T& m_mutex;
+    T &m_mutex;
     bool m_locked;
 };
 
 template<class T>
 struct WriteScopedLockImpl {
 public:
-    WriteScopedLockImpl(T& mutex)
-            :m_mutex(mutex) {
+    WriteScopedLockImpl(T &mutex)
+            : m_mutex(mutex) {
         m_mutex.wrlock();
         m_locked = true;
     }
@@ -129,14 +137,16 @@ public:
             m_locked = false;
         }
     }
+
 private:
-    T& m_mutex;
+    T &m_mutex;
     bool m_locked;
 };
 
 class Mutex {
 public:
     typedef ScopedLockImpl<Mutex> Lock;
+
     Mutex() {
         pthread_mutex_init(&m_mutex, nullptr);
     }
@@ -152,6 +162,7 @@ public:
     void unlock() {
         pthread_mutex_unlock(&m_mutex);
     }
+
 private:
     pthread_mutex_t m_mutex;
 };
@@ -159,12 +170,16 @@ private:
 /**
  * @brief 空互斥量，不加锁, 用于调试
  */
-class NullMutex{
+class NullMutex {
 public:
     typedef ScopedLockImpl<NullMutex> Lock;
+
     NullMutex() {}
+
     ~NullMutex() {}
+
     void lock() {}
+
     void unlock() {}
 };
 
@@ -192,6 +207,7 @@ public:
     void unlock() {
         pthread_rwlock_unlock(&m_lock);
     }
+
 private:
     pthread_rwlock_t m_lock;
 };
@@ -203,10 +219,13 @@ public:
     typedef WriteScopedLockImpl<NullMutex> WriteLock;
 
     NullRWMutex() {}
+
     ~NullRWMutex() {}
 
     void rdlock() {}
+
     void wrlock() {}
+
     void unlock() {}
 };
 
@@ -225,6 +244,7 @@ public:
 class Spinlock {
 public:
     typedef ScopedLockImpl<Spinlock> Lock;
+
     Spinlock() {
         pthread_spin_init(&m_mutex, 0);
     }
@@ -240,6 +260,7 @@ public:
     void unlock() {
         pthread_spin_unlock(&m_mutex);
     }
+
 private:
     pthread_spinlock_t m_mutex;
 };
@@ -247,19 +268,22 @@ private:
 class CASLock {
 public:
     typedef ScopedLockImpl<CASLock> Lock;
+
     CASLock() {
         m_mutex.clear();
     }
+
     ~CASLock() {
     }
 
     void lock() {
-        while(std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire));
+        while (std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire));
     }
 
     void unlock() {
         std::atomic_flag_clear_explicit(&m_mutex, std::memory_order_release);
     }
+
 private:
     volatile std::atomic_flag m_mutex;  // 原子操作, 每次都取内存
 };
@@ -274,26 +298,28 @@ public:
      * @param[in] cb 线程执行函数
      * @param[in] name 线程名称
      */
-    Thread(std::function<void()> cb, const std::string& name);  // 使用 Linux top 命令显示的线程 id
+    Thread(std::function<void()> cb, const std::string &name);  // 使用 Linux top 命令显示的线程 id
     ~Thread();
 
     pid_t getId() const { return m_id; }
-    const std::string& getName() const { return m_name;}
+
+    const std::string &getName() const { return m_name; }
 
     /**
      * @brief 等待线程执行完成
      */
     void join();
 
-    static Thread* GetThis();   // 当我是某个函数的时候，我想获取我现在所在的线程，需要一个静态方法，就可以拿到，然后针对这个线程做一些操作
-    static const std::string& GetName();  // 用于日志，直接获取当前线程的名字
-    static void SetName(const std::string& name);  // 设置当前线程的名字, 有的线程并不是我们自己创建的，所以需要一个静态方法可以设置主线程为 main
+    static Thread *GetThis();   // 当我是某个函数的时候，我想获取我现在所在的线程，需要一个静态方法，就可以拿到，然后针对这个线程做一些操作
+    static const std::string &GetName();  // 用于日志，直接获取当前线程的名字
+    static void SetName(const std::string &name);  // 设置当前线程的名字, 有的线程并不是我们自己创建的，所以需要一个静态方法可以设置主线程为 main
 private:
-    Thread(const Thread&) = delete;     // 禁止默认拷贝
-    Thread(const Thread&&) = delete;
-    Thread& operator=(const Thread&) = delete;
+    Thread(const Thread &) = delete;     // 禁止默认拷贝
+    Thread(const Thread &&) = delete;
 
-    static void* run(void* arg);    // 线程的入口函数
+    Thread &operator=(const Thread &) = delete;
+
+    static void *run(void *arg);    // 线程的入口函数
 private:
     pid_t m_id = -1;
     pthread_t m_thread = 0;
@@ -304,8 +330,6 @@ private:
 };
 
 }
-
-
 
 
 #endif //SYLAR_THREAD_H

@@ -14,14 +14,14 @@
 
 // 基础类型的转换
 sylar::ConfigVar<int>::ptr g_int_value_config =
-        sylar::Config::Lookup("system.port", (int)8080, "system port");
+        sylar::Config::Lookup("system.port", (int) 8080, "system port");
 
 sylar::ConfigVar<float>::ptr g_int_value_config_float =
-        sylar::Config::Lookup("system.port", (float )8080, "system port");
+        sylar::Config::Lookup("system.port", (float) 8080, "system port");
 
 
 sylar::ConfigVar<float>::ptr g_float_value_config =
-        sylar::Config::Lookup("system.value", (float)10.2f, "system value");
+        sylar::Config::Lookup("system.value", (float) 10.2f, "system value");
 
 sylar::ConfigVar<std::vector<int>>::ptr g_int_vec_value_config =
         sylar::Config::Lookup("system.int_vec", std::vector<int>{1, 2}, "system int vec");
@@ -39,22 +39,27 @@ sylar::ConfigVar<std::map<std::string, int>>::ptr g_str_int_map_value_config =
         sylar::Config::Lookup("system.str_int_map", std::map<std::string, int>{{"k", 2}}, "system str int map");
 
 sylar::ConfigVar<std::unordered_map<std::string, int>>::ptr g_str_int_umap_value_config =
-        sylar::Config::Lookup("system.str_int_umap", std::unordered_map<std::string, int>{{"k", 2}}, "system str int umap");
+        sylar::Config::Lookup("system.str_int_umap", std::unordered_map<std::string, int>{{"k", 2}},
+                              "system str int umap");
 
 
-void print_yaml(const YAML::Node& node, int level) {
-    if (node.IsScalar()) { // 2 是 scalar
-        SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << node.Scalar() << " - " << node.Type() << " - " << level;
-    } else if (node.IsNull()) {
-        SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << "NULL - " << node.Type() << " NULL " << level;
-    } else if (node.IsMap()) { // 2，3 是 map
-        for (auto it = node.begin(); it != node.end(); ++it) {
-            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << it->first << " - " << it->second.Type() << " - " << level;
+void print_yaml(const YAML::Node &node, int level) {
+    if(node.IsScalar()) { // 2 是 scalar
+        SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << node.Scalar() << " - " << node.Type()
+                                         << " - " << level;
+    } else if(node.IsNull()) {
+        SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << "NULL - " << node.Type() << " NULL "
+                                         << level;
+    } else if(node.IsMap()) { // 2，3 是 map
+        for(auto it = node.begin(); it != node.end(); ++it) {
+            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << it->first << " - " << it->second.Type()
+                                             << " - " << level;
             print_yaml(it->second, level + 1);
         }
-    } else if (node.IsSequence()) { // 4 是 sequence
-        for (size_t i = 0; i < node.size(); ++i) {
-            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << i << " - " << node[i].Type() << " - " << level;
+    } else if(node.IsSequence()) { // 4 是 sequence
+        for(size_t i = 0; i < node.size(); ++i) {
+            SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << std::string(level * 4, ' ') << i << " - " << node[i].Type() << " - "
+                                             << level;
             print_yaml(node[i], level + 1);
         }
     }
@@ -125,18 +130,18 @@ public:
         return ss.str();
     }
 
-    bool operator==(const Person& oth) const {
+    bool operator==(const Person &oth) const {
         return m_name == oth.m_name
-            && m_age == oth.m_age
-            && m_sex == oth.m_sex;
+               && m_age == oth.m_age
+               && m_sex == oth.m_sex;
     }
 };
 
-namespace sylar{
+namespace sylar {
 template<>
 class LexicalCast<std::string, Person> {
 public:
-    Person operator()(const std::string& v){
+    Person operator()(const std::string &v) {
         YAML::Node node = YAML::Load(v);
         Person p;
         p.m_name = node["name"].as<std::string>();
@@ -145,10 +150,11 @@ public:
         return p;
     }
 };
+
 template<>
 class LexicalCast<Person, std::string> {
 public:
-    std::string operator() (const Person& p){
+    std::string operator()(const Person &p) {
         YAML::Node node;
         node["name"] = p.m_name;
         node["age"] = p.m_age;
@@ -180,7 +186,7 @@ void test_class() {
         }                       \
         SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << #prefix " " #g_var " yaml: \n" << g_var->toString(); \
     }
-    g_person->addListener([](const Person& old_value, const Person& new_value){
+    g_person->addListener([](const Person &old_value, const Person &new_value) {
         SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "old_value=" << old_value.toString()
                                          << " new_value=" << new_value.toString();
     });
@@ -218,17 +224,17 @@ void test_log() {
 
 }
 
-int main(int argc, char** argv ) {
+int main(int argc, char **argv) {
 //    test_yaml();
 //    test_config();
 //    test_class();
     test_log();
 
 
-    sylar::Config::Visit([](sylar::ConfigVarBase::ptr var){
+    sylar::Config::Visit([](sylar::ConfigVarBase::ptr var) {
         SYLAR_LOG_INFO(SYLAR_LOG_ROOT()) << "name=" << var->getName()
-                                 << " description=" << var->getDescription()
-                                 << " value=" << var->toString();
+                                         << " description=" << var->getDescription()
+                                         << " value=" << var->toString();
     });
 
     return 0;

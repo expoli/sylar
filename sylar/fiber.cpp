@@ -17,21 +17,22 @@ namespace sylar {
 
 static Logger::ptr g_logger = SYLAR_LOG_NAME("system");
 
-static std::atomic<uint64_t> s_fiber_id {0};
-static std::atomic<uint64_t> s_fiber_count {0};
+static std::atomic<uint64_t> s_fiber_id{0};
+static std::atomic<uint64_t> s_fiber_count{0};
 
-static thread_local Fiber* t_fiber = nullptr;  // 当前线程的协程
+static thread_local Fiber *t_fiber = nullptr;  // 当前线程的协程
 static thread_local Fiber::ptr t_threadFiber = nullptr;  // 主协程
 
 static ConfigVar<uint32_t>::ptr g_fiber_stack_size = // 协程栈大小，配置文件中的配置项
-    Config::Lookup<uint32_t>("fiber.stack_size", 1024 * 1024, "fiber stack size");
+        Config::Lookup<uint32_t>("fiber.stack_size", 1024 * 1024, "fiber stack size");
 
 class MallocStackAllocator {
 public:
-    static void* Alloc(size_t size){
+    static void *Alloc(size_t size) {
         return malloc(size);
     }
-    static void Dealloc(void* vp, size_t size){
+
+    static void Dealloc(void *vp, size_t size) {
         return free(vp);
     }
 };
@@ -58,8 +59,7 @@ Fiber::Fiber() {
 }
 
 Fiber::Fiber(std::function<void()> cb, size_t stack_size)
-    :m_id(++s_fiber_id)
-    ,m_cb(cb){
+        : m_id(++s_fiber_id), m_cb(cb) {
     ++s_fiber_count;
     m_stack_size = stack_size ? stack_size : g_fiber_stack_size->getValue();
 
@@ -84,7 +84,7 @@ Fiber::~Fiber() {
     } else {
         SYLAR_ASSERT(!m_cb);
         SYLAR_ASSERT(m_state == EXEC);
-        Fiber* cur = t_fiber;
+        Fiber *cur = t_fiber;
         if(cur == this) {
             SetThis(nullptr);
         }
@@ -126,6 +126,7 @@ void Fiber::swapOut() {
 void Fiber::SetThis(sylar::Fiber *f) {
     t_fiber = f;
 }
+
 /**
  * @brief 获取当前线程正在执行的协程
  * @return

@@ -5,8 +5,8 @@
 * ArchLinux
 * cmake
 * gcc
-  * boost
-  * yaml-cpp
+    * boost
+    * yaml-cpp
 
 ## 项目结构
 
@@ -22,27 +22,28 @@
 ## 日志系统
 
 - log4j
-  - Logger（定义日志类别）
-    - Appender（定义日志输出地方）
-      - Formatter（定义日志输出格式）
-      - FileAppender（文件输出）
-      - StdoutAppender（标准输出）
-      - StderrAppender（标准错误输出）
-      - LogStreamAppender（日志流输出）
-    - Formatter（定义日志输出格式）
+    - Logger（定义日志类别）
+        - Appender（定义日志输出地方）
+            - Formatter（定义日志输出格式）
+            - FileAppender（文件输出）
+            - StdoutAppender（标准输出）
+            - StderrAppender（标准错误输出）
+            - LogStreamAppender（日志流输出）
+        - Formatter（定义日志输出格式）
 
 ## 配置系统
 
 * Config --> Yaml
-  * yaml-cpp
-    * 第三方库，GitHub上有
+    * yaml-cpp
+        * 第三方库，GitHub上有
 * 使用方式
-  * 读取配置文件
-  * 读取配置文件中的某个节点
-  * 读取配置文件中的某个节点的某个属性
-  * 读取配置文件中的某个节点的某个属性的值
-  * 读取配置文件中的某个节点的某个属性的值的数组
-  * 读取配置文件中的某个节点的某个属性的值的数组的某个值
+    * 读取配置文件
+    * 读取配置文件中的某个节点
+    * 读取配置文件中的某个节点的某个属性
+    * 读取配置文件中的某个节点的某个属性的值
+    * 读取配置文件中的某个节点的某个属性的值的数组
+    * 读取配置文件中的某个节点的某个属性的值的数组的某个值
+
 ```c++
 YAML::Node root = YAML::LoadFile("config.yml");
 for(auto i = root.begin(); i != root.end(); ++i) {
@@ -57,8 +58,8 @@ for(size_t i = 0; i < node.size(); ++i) {
 node.IsScalar() // 判断是否是标量
 ```
 
-- 配置系统的原则：约定优于配置 
-  - 项目真正跑起来的时候，需要修改的配置量不多，可能只有一些比较少的比较重要的配置。
+- 配置系统的原则：约定优于配置
+    - 项目真正跑起来的时候，需要修改的配置量不多，可能只有一些比较少的比较重要的配置。
 
 ```c++
 template<T, FromStr, ToStr>
@@ -74,10 +75,11 @@ LexicalCast;
 ```
 
 - 自定义类型，需要实现 syalr::LexicalCast, 偏特化
-  - 实现后，就可以支持 config 解析自定义类型了，自定义类型可以和常规 stl 容器一起使用。
-  - （实现是通过递归实现的，不管嵌套多少层，都能正常解析）
+    - 实现后，就可以支持 config 解析自定义类型了，自定义类型可以和常规 stl 容器一起使用。
+    - （实现是通过递归实现的，不管嵌套多少层，都能正常解析）
 
 ### 配置的事件机制
+
 当一个配置项发生修改的时候，可以反向通知对应的代码，回调函数的方式。
 
 ### 日志系统整合配置系统
@@ -114,7 +116,7 @@ static Logger::ptr g_log = SYLAR_LOG_NAME("system");
 - 实现日志配置的热更新
 - fix 日志文件未以追加方式打开的 bug
 - 不同 log 使用不同的配置
-  - （fix 原始根据文件定义 appender 的日志级别为 unknown 所以无法输出日志的 bug）
+    - （fix 原始根据文件定义 appender 的日志级别为 unknown 所以无法输出日志的 bug）
 
 ## 线程库封装
 
@@ -126,18 +128,19 @@ pthread pthread_create
 信号量 semaphore
 
 - 整合 log
-  - Logger, appender, manager
+    - Logger, appender, manager
 - 锁的性能
-  - 自旋 12M 
-  - 空锁 30M 
-  - 互斥 5M
-  - CAS 6M
+    - 自旋 12M
+    - 空锁 30M
+    - 互斥 5M
+    - CAS 6M
 - 整合配置
-  - 读多写少的情况下，读写锁性能更好
-  - 要写、要读、遍历配置的时候，可以修改配置
-  - 我们可以将配置输出到文件里、修改完之后再反序列化回去
+    - 读多写少的情况下，读写锁性能更好
+    - 要写、要读、遍历配置的时候，可以修改配置
+    - 我们可以将配置输出到文件里、修改完之后再反序列化回去
 
 ## 协程库封装
+
 定义协程接口
 ucontext_t.
 制定一些自己的宏、方便调试

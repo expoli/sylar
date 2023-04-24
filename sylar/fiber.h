@@ -16,9 +16,9 @@
 #include <functional>
 #include "thread.h"
 
-namespace sylar{
+namespace sylar {
 
-class Fiber : public std::enable_shared_from_this<Fiber>{   // 获得当前类的指针，继承这个类之后、不可以在栈上创建对象
+class Fiber : public std::enable_shared_from_this<Fiber> {   // 获得当前类的指针，继承这个类之后、不可以在栈上创建对象
 public:
     typedef std::shared_ptr<Fiber> ptr;
 
@@ -36,38 +36,48 @@ private:
 public:
     // 不允许默认构造，使用 functional 的方式构造，解决了函数指针不适合场景的问题
     Fiber(std::function<void()> cb, size_t stack_size = 0);
+
     ~Fiber();
 
     // 协程执行完了、或者出错的时候，重置协程函数，并重置状态，利用已经分配的内存，去做另外一些事情，节省内存的分配与释放
     // 能重置的协程的状态要么是 TERM，要么是 INIT
     void reset(std::function<void()> cb);
+
     // 切换到当前协程执行
     void swapIn();
+
     // 切换到后台执行
     void swapOut();
 
-    uint64_t getId() const { return m_id;}
+    uint64_t getId() const { return m_id; }
+
 public:
     // 获取当前协程
     static Fiber::ptr GetThis();
+
     // 设置当前协程
-    static void SetThis(Fiber* f);
+    static void SetThis(Fiber *f);
+
     // 切换到后台，并且设置为 Ready 状态
     static void YieldToReady();
+
     // 切换到后台，并且设置为 Hold 状态
     static void YieldToHold();
+
     // 获取当前协程的总数
     static uint64_t TotalFibers();
 
     static void MainFunc();
+
     static uint64_t GetFiberId();
+
 private:
     uint64_t m_id = 0;  // 协程 id
     uint32_t m_stack_size = 0;   // 协程栈大小
     State m_state = INIT;   // 协程状态
 
     ucontext_t m_ctx;   // 协程上下文
-    void* m_stack = nullptr;    // 协程栈
+    void *m_stack = nullptr;    // 协程栈
 
     std::function<void()> m_cb; // 协程函数, 用于执行协程的函数，回调函数
 };

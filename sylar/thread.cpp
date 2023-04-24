@@ -12,9 +12,9 @@
 #include "log.h"
 #include "util.h"
 
-namespace sylar{
+namespace sylar {
 
-static thread_local Thread* t_thread = nullptr;     // 我们要拿到当前线程，需要一个线程局部变量, 用于保存当前线程
+static thread_local Thread *t_thread = nullptr;     // 我们要拿到当前线程，需要一个线程局部变量, 用于保存当前线程
 static thread_local std::string t_thread_name = "UNKNOWN";  // 用于保存当前线程的名字,只在当前线程中有效，性能可以提高
 
 static sylar::Logger::ptr g_logger = SYLAR_LOG_NAME("system");  // 系统都放在 system 中
@@ -46,11 +46,11 @@ Thread *Thread::GetThis() {
     return t_thread;
 }
 
-const std::string& Thread::GetName() {
+const std::string &Thread::GetName() {
     return t_thread_name;
 }
 
-void Thread::SetName(const std::string& name) {
+void Thread::SetName(const std::string &name) {
     if(name.empty()) {
         return;
     }
@@ -61,15 +61,14 @@ void Thread::SetName(const std::string& name) {
 }
 
 Thread::Thread(std::function<void()> cb, const std::string &name)
-        : m_cb(std::move(cb))
-        , m_name(name) {
+        : m_cb(std::move(cb)), m_name(name) {
     if(m_name.empty()) {
         m_name = "UNKNOWN";
     }
     int rt = pthread_create(&m_thread, nullptr, &Thread::run, this);
     if(rt) {
         SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "pthread_create thread fail, rt=" << rt
-            << " name=" << name;
+                                          << " name=" << name;
         throw std::logic_error("pthread_create error");
     }
     // 有可能我们的构造函数返回了，线程还没有开始运行，所以我们需要等待线程运行
@@ -87,7 +86,7 @@ void Thread::join() {
         int rt = pthread_join(m_thread, nullptr);
         if(rt) {
             SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "pthread_join thread fail, rt=" << rt
-                << " name=" << m_name;
+                                              << " name=" << m_name;
             throw std::logic_error("pthread_join error");
         }
         m_thread = 0;
@@ -95,7 +94,7 @@ void Thread::join() {
 }
 
 void *Thread::run(void *arg) {
-    Thread* thread = (Thread*)arg;  // 拿到当前线程
+    Thread *thread = (Thread *) arg;  // 拿到当前线程
     t_thread = thread;
     t_thread_name = thread->m_name; // 设置线程名字, 用于日志输出, 只有在真正运行的时候，设置才有用
     thread->m_id = sylar::GetThreadId();

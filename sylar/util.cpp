@@ -24,11 +24,11 @@ uint32_t GetFiberId() {
     return sylar::Fiber::GetFiberId();
 }
 
-void Backtrace(std::vector<std::string>& bt, int size, int skip) {
+void Backtrace(std::vector<std::string> &bt, int size, int skip) {
     void **array = (void **) malloc((sizeof(void *) * size));  // 协程的栈比较小，所以为了从内存上节省，所以我们不在栈上分配，而是在堆上分配能用指针就用指针
     size_t s = ::backtrace(array, size);  // 从当前函数开始往上找，找 size 个
 
-    char ** strings = backtrace_symbols(array, s);  // 将地址转换为字符串
+    char **strings = backtrace_symbols(array, s);  // 将地址转换为字符串
     if(strings == nullptr) {
         SYLAR_LOG_ERROR(g_logger) << "backtrace_symbols error";
         return;
@@ -41,7 +41,7 @@ void Backtrace(std::vector<std::string>& bt, int size, int skip) {
     free(array);
 }
 
-std::string BacktraceToString(int size, int skip, const std::string& prefix) {
+std::string BacktraceToString(int size, int skip, const std::string &prefix) {
     std::vector<std::string> bt;
     Backtrace(bt, size, skip);
     std::stringstream ss;

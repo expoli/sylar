@@ -15,7 +15,7 @@ set(LIB_SRC
         sylar/sylar.h
         sylar/fiber.cpp)
 
-find_package(yaml-cpp REQUIRED )
+find_package(yaml-cpp REQUIRED)
 # ${YAML_CPP_INCLUDE_DIR}
 # ${YAML_CPP_LIBRARIES}
 
@@ -25,7 +25,7 @@ set(LIB_LIB
         ${YAML_CPP_LIBRARIES}
         )
 
-add_library(sylar SHARED ${LIB_SRC} )
+add_library(sylar SHARED ${LIB_SRC})
 force_redefine_file_macro_for_sources(sylar)    # __FILE__ 重定义为 __FILE__ 变为相对路径
 
 add_executable(test tests/test.cpp)
@@ -54,5 +54,5 @@ target_link_libraries(test_fiber ${LIB_LIB})
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(EXECUTABLE_OUTPUT_PATH  ${PROJECT_SOURCE_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH  ${PROJECT_SOURCE_DIR}/lib)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
