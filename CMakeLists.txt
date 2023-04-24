@@ -12,7 +12,8 @@ set(LIB_SRC
         sylar/util.cpp
         sylar/config.cpp
         sylar/thread.cpp
-        sylar/sylar.h)
+        sylar/sylar.h
+        sylar/fiber.cpp)
 
 find_package(yaml-cpp REQUIRED )
 # ${YAML_CPP_INCLUDE_DIR}
@@ -45,6 +46,11 @@ add_executable(test_util tests/test_util.cpp)
 add_dependencies(test_util sylar)
 force_redefine_file_macro_for_sources(test_util)  # __FILE__
 target_link_libraries(test_util ${LIB_LIB})
+
+add_executable(test_fiber tests/test_fiber.cpp)
+add_dependencies(test_fiber sylar)
+force_redefine_file_macro_for_sources(test_fiber)  # __FILE__
+target_link_libraries(test_fiber ${LIB_LIB})
 
 set(CMAKE_CXX_STANDARD 11)
 
