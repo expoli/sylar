@@ -143,6 +143,10 @@ ucontext_t.
 制定一些自己的宏、方便调试
 
 ```c++
+Fiber::GetThis()
+   如果当前线程还没有协程的时候，都会创建一个主协程
+   主协程 -> swapin -> 子协程
+            Yield <-
 Thread->main_fiber <----> sub_fiber
             ^
             |
@@ -150,6 +154,10 @@ Thread->main_fiber <----> sub_fiber
         sub_fiber
         
 主协程创建子协程、子协程执行完之后回到主协程
+```
+
+```c++
+每个线程都会有一个主协程
 ```
 
 ## socket 函数库

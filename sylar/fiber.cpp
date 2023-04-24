@@ -174,6 +174,11 @@ void Fiber::MainFunc() {
                                           << std::endl
                                           << sylar::BacktraceToString();
     }
+
+    auto raw_ptr = cur.get();
+    cur.reset();
+    raw_ptr->swapOut();
+    SYLAR_ASSERT2(false, "never reach fiber_id=" + std::to_string(raw_ptr->getId()));
 }
 
 
