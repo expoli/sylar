@@ -167,6 +167,10 @@ scheduler -> thread -> fiber
 
 1. 线程池，分配一组线程
 2. 协程调度器，将协程，指定到相应的线程上去执行
+
+m_threads
+<function<void()>>, fiber, threadid> m_fibers // 支持在特定线程上执行
+schedule(fubnc/fiber)   // 把一个函数扔进去，让他以协程的方式执行
 ```
 
 ## socket 函数库

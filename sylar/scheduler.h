@@ -70,7 +70,11 @@ public:
     }
 
 protected:
-    virtual void tickle();  // 唤醒
+    virtual void tickle();  // 唤醒，信号量
+    void run(); // 线程执行函数
+    virtual bool stopping();   // 子类实现，判断是否可以停止，有其他清理任务的机会
+
+    void setThis(); // 设置当前线程的调度器
 private:
     template<class FiberOrCb>
     bool scheduleNoLock(FiberOrCb fc, int thread) {
@@ -119,7 +123,17 @@ private:
     MutexType m_mutex;
     std::vector<Thread::ptr> m_threads; // 协程管理的线程？
     std::list<Fiber::ptr> m_fibers; // 协程队列，即将执行的，计划执行的协程
+    Fiber::ptr m_rootFiber; // 主协程
     std::string m_name; // 协程调度器的名称
+
+protected:
+    std::vector<int> m_threadIds;   // 线程id的列表，我需要随机选择一个线程来执行协程，不需要真正的线程id，比如 100 % 5
+    size_t m_threadCount = 0;   // 线程数量
+    size_t m_activeThreadCount = 0;    // 活跃的线程数量
+    size_t m_idleThreadCount = 0;  // 空闲的线程数量
+    bool m_stopping = true; // 是否停止
+    bool m_autoStop = false;    // 是否自动停止
+    int m_rootThread = 0;   // 主线程id
 };
 
 }

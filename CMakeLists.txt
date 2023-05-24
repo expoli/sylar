@@ -13,7 +13,8 @@ set(LIB_SRC
         sylar/config.cpp
         sylar/thread.cpp
         sylar/sylar.h
-        sylar/fiber.cpp)
+        sylar/fiber.cpp
+        sylar/scheduler.cpp)
 
 find_package(yaml-cpp REQUIRED)
 # ${YAML_CPP_INCLUDE_DIR}
