@@ -159,8 +159,14 @@ Thread->main_fiber <----> sub_fiber
 主协程创建子协程、子协程执行完之后回到主协程
 ```
 
+协程调度模块 scheduler
+
 ```c++
-每个线程都会有一个主协程
+        1 : N     1 : M
+scheduler -> thread -> fiber
+
+1. 线程池，分配一组线程
+2. 协程调度器，将协程，指定到相应的线程上去执行
 ```
 
 ## socket 函数库
