@@ -171,6 +171,15 @@ scheduler -> thread -> fiber
 m_threads
 <function<void()>>, fiber, threadid> m_fibers // 支持在特定线程上执行
 schedule(fubnc/fiber)   // 把一个函数扔进去，让他以协程的方式执行
+
+start()
+stop()  // 等待协程调度器所有的任务执行完毕
+run()
+1. 设置当前线程的 scheduler
+2. 设置当前线程的 run, fiber
+3. 协程调度循环 while(true)
+    1. 协程消息队列里面是否有任务
+    2. 无任务执行，执行 idle 协程
 ```
 
 ## socket 函数库

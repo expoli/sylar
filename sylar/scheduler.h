@@ -12,7 +12,6 @@
 #define SYLAR_SCHEDULER_H
 
 #include <memory>
-#include <mutex>
 #include <vector>
 #include <list>
 #include "fiber.h"
@@ -73,6 +72,7 @@ protected:
     virtual void tickle();  // 唤醒，信号量
     void run(); // 线程执行函数
     virtual bool stopping();   // 子类实现，判断是否可以停止，有其他清理任务的机会
+    virtual void idle();   // 子类实现，空闲协程，为了解决协程调度器没有任务做，又不能退出的问题
 
     void setThis(); // 设置当前线程的调度器
 private:
@@ -129,8 +129,8 @@ private:
 protected:
     std::vector<int> m_threadIds;   // 线程id的列表，我需要随机选择一个线程来执行协程，不需要真正的线程id，比如 100 % 5
     size_t m_threadCount = 0;   // 线程数量
-    size_t m_activeThreadCount = 0;    // 活跃的线程数量
-    size_t m_idleThreadCount = 0;  // 空闲的线程数量
+    std::atomic<size_t> m_activeThreadCount = {0};    // 活跃的线程数量
+    std::atomic<size_t> m_idleThreadCount = {0};  // 空闲的线程数量
     bool m_stopping = true; // 是否停止
     bool m_autoStop = false;    // 是否自动停止
     int m_rootThread = 0;   // 主线程id
