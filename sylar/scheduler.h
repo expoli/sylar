@@ -122,7 +122,7 @@ private:
 private:
     MutexType m_mutex;
     std::vector<Thread::ptr> m_threads; // 协程管理的线程？
-    std::list<Fiber::ptr> m_fibers; // 协程队列，即将执行的，计划执行的协程
+    std::list<FiberAndThread> m_fibers; // 协程队列，即将执行的，计划执行的协程
     Fiber::ptr m_rootFiber; // 主协程
     std::string m_name; // 协程调度器的名称
 
