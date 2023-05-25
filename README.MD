@@ -182,6 +182,29 @@ run()
     2. 无任务执行，执行 idle 协程
 ```
 
+```c++
+IOManager (epoll) --> Scheduler
+      |
+      |
+      V
+     idle (epoll_wait) 
+// 基于 Schedule 实现 idle 方法
+
+    信号量
+PutMessage(msg,) +信号量1
+message_queue
+    |
+    |----Thread
+    |----Thread
+        wait()-信号量1，RecvMessage(msg)
+        
+异步 IO，等待数据返回。在 epoll_wait 中等待。
+socket_pair pipe，从 epoll_wait 中唤醒，然后再去读取数据。处理实时消息队列请求。
+
+epoll_create, epoll_ctl, epoll_wait
+```
+
+
 ## socket 函数库
 
 ## http 协议开发
