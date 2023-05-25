@@ -114,14 +114,190 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb) {
     }
 
     FdContext::MutexType::Lock lock2(fd_ctx->mutex);
+    /**
+     * 这一部分代码使用按位与运算符 `&` 来检查 `FdContext` 对象的 `events`
+     * 字段中是否已经存在指定的事件。如果 `events` 字段与 `event` 参数按位与的结果不为零，
+     * 则表示事件已经存在。
+     * 例如，假设 `events` 字段的值为 `0b00000101`，表示已经注册了读和写事件。
+     * 如果 `event` 参数的值为 `0b00000100`，表示要添加写事件，
+     * 则按位与的结果为 `0b00000100`，不为零。这意味着写事件已经存在，
+     * 将记录错误消息并触发断言。
+     */
     if(fd_ctx->events & event) {
         SYLAR_LOG_ERROR(g_logger) << "addEvent assert fd=" << fd
                                   << " event=" << event
                                   << " fd_ctx.event=" << fd_ctx->events;
         SYLAR_ASSERT(!(fd_ctx->events & event));
     }
+
+    int op = fd_ctx->events ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
+    epoll_event epevent;
+    epevent.events = EPOLLET | fd_ctx->events | event;
+    epevent.data.ptr = fd_ctx;
+
+    int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+    if(rt) {
+        SYLAR_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", "
+                                  << op << "," << fd << "," << epevent.events << "):"
+                                  << rt << " (" << errno << ") (" << strerror(errno) << ")";
+        return -1;
+    }
+
+    ++m_pendingEventCount;
+    fd_ctx->events = (Event)(fd_ctx->events | event);
+    /**
+     * FdContext::EventContext& event_ctx = fd_ctx->getContext(event);
+     * 这一行代码调用了 FdContext 对象的 getContext 方法，并将返回的 EventContext 对象的引用存储在 event_ctx 变量中。
+     * getContext 方法接受一个 Event 类型的参数，它返回与该事件类型对应的 EventContext 对象。
+     * 例如，如果传递的事件类型为 READ，则返回 FdContext 对象中的 read 字段，该字段是一个 EventContext 对象。
+     *
+     * EventContext 对象包含与特定事件类型相关的信息，例如事件执行的调度程序、事件协程和事件的回调函数。
+     */
+    FdContext::EventContext& event_ctx = fd_ctx->getContext(event);
+    /**
+     * 用于检查 EventContext 对象的 scheduler、fiber 和 cb 字段是否都为 nullptr。
+     * 如果任何一个字段不为 nullptr，则断言将失败并终止程序。
+     * 这个断言的目的是确保在添加新事件之前，与该事件类型对应的 EventContext
+     * 对象尚未与任何调度程序、协程或回调函数关联。
+     * 这可以防止意外覆盖现有的调度程序、协程或回调函数。
+     */
+    SYLAR_ASSERT(!event_ctx.scheduler
+                 && !event_ctx.fiber
+                 && !event_ctx.cb);
+
+    event_ctx.scheduler = Scheduler::GetThis();
+    /**
+     * event_ctx.cb.swap(cb); 这一行代码调用了 std::function 类的 swap 成员函数，
+     * 它用于交换两个 std::function 对象的内容。在这种情况下，
+     * 它交换了 event_ctx.cb 和 cb 两个对象的内容。
+     * 这意味着在调用 swap 函数之后，event_ctx.cb 将包含传递给 addEvent 方法的回调函数
+     * 而原来的 event_ctx.cb 值将存储在 cb 变量中。
+     */
+    if(cb) {
+        event_ctx.cb.swap(cb);
+    } else {
+        event_ctx.fiber = Fiber::GetThis();
+        SYLAR_ASSERT(event_ctx.fiber->getState() == Fiber::EXEC);
+    }
     return 0;
 }
 
+bool IOManager::delEvent(int fd, Event event) {
+    RWMutexType::ReadLock lock(m_mutex);
+    if((int)m_fdContexts.size() <= fd) {
+        return false;
+    }
+    FdContext* fd_ctx = m_fdContexts[fd];
+    lock.unlock();
+
+    FdContext::MutexType::Lock lock2(fd_ctx->mutex);
+    if(!(fd_ctx->events & event)) { // 没有这个事件
+        return false;
+    }
+
+    Event new_events = (Event)(fd_ctx->events & ~event);    // 事件与运算，去掉事件
+    int op = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+    epoll_event epevent;
+    epevent.events = EPOLLET | new_events;
+    epevent.data.ptr = fd_ctx;
+
+    int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+    if(rt) {
+        SYLAR_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", "
+                                  << op << "," << fd << "," << epevent.events << "):"
+                                  << rt << " (" << errno << ") (" << strerror(errno) << ")";
+        return false;
+    }
+
+    --m_pendingEventCount;
+    fd_ctx->events = new_events;
+    FdContext::EventContext& event_ctx = fd_ctx->getContext(event);
+    fd_ctx->resetContext(event_ctx);
+    return true;
+}
+
+bool IOManager::cancelEvent(int fd, Event event) {
+    RWMutexType::ReadLock lock(m_mutex);
+    if((int)m_fdContexts.size() <= fd) {
+        return false;
+    }
+    FdContext* fd_ctx = m_fdContexts[fd];
+    lock.unlock();
+
+    FdContext::MutexType::Lock lock2(fd_ctx->mutex);
+    if(!(fd_ctx->events & event)) {
+        return false;
+    }
+
+    Event new_events = (Event)(fd_ctx->events & ~event);
+    int op = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+    epoll_event epevent;
+    epevent.events = EPOLLET | new_events;
+    epevent.data.ptr = fd_ctx;
+
+    int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+    if(rt) {
+        SYLAR_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", "
+                                  << op << "," << fd << "," << epevent.events << "):"
+                                  << rt << " (" << errno << ") (" << strerror(errno) << ")";
+        return false;
+    }
+
+    fd_ctx->triggerEvent(event);
+    --m_pendingEventCount;
+    return true;
+}
+
+bool IOManager::cancelAll(int fd) {
+    RWMutexType::ReadLock lock(m_mutex);
+    if((int)m_fdContexts.size() <= fd) {
+        return false;
+    }
+    FdContext* fd_ctx = m_fdContexts[fd];
+    lock.unlock();
+
+    FdContext::MutexType::Lock lock2(fd_ctx->mutex);
+    if(!fd_ctx->events) {
+        return false;
+    }
+
+    int op = EPOLL_CTL_DEL;
+    epoll_event epevent;
+    epevent.events = 0;
+    epevent.data.ptr = fd_ctx;
+
+    int rt = epoll_ctl(m_epfd, op, fd, &epevent);
+    if(rt) {
+        SYLAR_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", "
+                                  << op << "," << fd << "," << epevent.events << "):"
+                                  << rt << " (" << errno << ") (" << strerror(errno) << ")";
+        return false;
+    }
+
+    if(fd_ctx->events & READ) {
+        fd_ctx->triggerEvent(READ);
+        --m_pendingEventCount;
+    }
+    if(fd_ctx->events & WRITE) {
+        fd_ctx->triggerEvent(WRITE);
+        --m_pendingEventCount;
+    }
+
+    SYLAR_ASSERT(fd_ctx->events == 0);
+    return true;
+}
+
+IOManager* IOManager::GetThis() {
+    /**
+     * 这种转换是合理的，因为 IOManager 类继承自 Scheduler 类。
+     * 如果当前调度程序对象实际上是一个 IOManager 对象，则转换将成功并返回一个有效的指针。
+     * 如果当前调度程序对象不是一个 IOManager 对象，则转换将失败并返回空指针。
+     *
+     * 由于使用了 dynamic_cast，这种转换是类型安全的。
+     * 如果转换失败，它不会导致未定义行为，而只会返回空指针。
+     * 但是，在使用返回的指针之前，应检查它是否为空，以避免对空指针进行解引用。
+     */
+    return dynamic_cast<IOManager*>(Scheduler::GetThis());
+}
 
 }
