@@ -75,6 +75,13 @@ void Scheduler::start() {
                                       , m_name + "_" + std::to_string(i)));
         m_threadIds.push_back(m_threads[i]->getId());    // 将线程id放入线程id数组中，与信号量配合使用
     }
+    lock.unlock();
+
+    if(m_rootFiber) {   // 如果有主协程，那么就唤醒主协程
+//         m_rootFiber->swapIn();
+        m_rootFiber->call();
+        SYLAR_LOG_INFO(g_logger) << "call out " << m_rootFiber->getState();
+    }
 }
 
 void Scheduler::stop() {
@@ -119,6 +126,7 @@ void Scheduler::setThis() {
 }
 
 void Scheduler::run() {
+    SYLAR_LOG_DEBUG(g_logger) << m_name << " run";
     setThis();
     if (sylar::GetThreadId() != m_rootThread) { // 如果不是主线程，那么就设置当前线程的主协程
         t_fiber = Fiber::GetThis().get();
@@ -170,7 +178,7 @@ void Scheduler::run() {
             ft.reset();
         } else if(ft.cb) {
             if(cb_fiber){
-                cb_fiber->reset(&ft.cb);
+                cb_fiber->reset(ft.cb);
             } else {
                 cb_fiber.reset(new Fiber(ft.cb));
             }
@@ -190,6 +198,7 @@ void Scheduler::run() {
             }
         } else {    // 事情做完了，idle协程执行
             if(idle_fiber->getState() == Fiber::TERM){
+                SYLAR_LOG_INFO(g_logger) << "idle fiber term";
                 break;
             }
 
@@ -201,6 +210,23 @@ void Scheduler::run() {
             }
             --m_idleThreadCount;
         }
+    }
+}
+
+void Scheduler::tickle() {
+    SYLAR_LOG_INFO(g_logger) << "tickle";
+}
+
+bool Scheduler::stopping() {
+    MutexType::Lock lock(m_mutex);
+    return m_autoStop && m_stopping
+           && m_fibers.empty() && m_activeThreadCount == 0;
+}
+
+void Scheduler::idle() {
+    SYLAR_LOG_INFO(g_logger) << "idle";
+    while(!stopping()){
+        sylar::Fiber::YieldToHold();
     }
 }
 

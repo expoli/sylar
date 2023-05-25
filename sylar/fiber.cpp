@@ -12,6 +12,7 @@
 #include "macro.h"
 #include "config.h"
 #include "log.h"
+#include "scheduler.h"
 
 namespace sylar {
 
@@ -91,7 +92,8 @@ Fiber::~Fiber() {
     }
     SYLAR_LOG_DEBUG(g_logger) << "Fiber::~Fiber id=" << m_id;
 }
-
+// 重置协程函数，并重置状态
+// INIT, TERM, EXCEPT
 void Fiber::reset(std::function<void()> cb) {
     SYLAR_ASSERT(m_stack);
     SYLAR_ASSERT(m_state == TERM || m_state == INIT || m_state == EXCEPT);
@@ -106,23 +108,32 @@ void Fiber::reset(std::function<void()> cb) {
     makecontext(&m_ctx, &Fiber::MainFunc, 0);
     m_state = INIT;
 }
-
-void Fiber::swapIn() {
-    SetThis(this);  // 把自己放进去
-    SYLAR_ASSERT(m_state != EXEC);
+// 切换到当前协程执行
+void Fiber::call() {
+    SetThis(this);
     m_state = EXEC;
     if(swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
         SYLAR_ASSERT2(false, "swapcontext");
     }
 }
 
-void Fiber::swapOut() {
-    SetThis(t_threadFiber.get());   // 把主协程放进去
-    if(swapcontext(&m_ctx, &t_threadFiber->m_ctx)) {
+// 切换到当前协程执行
+void Fiber::swapIn() {
+    SetThis(this);  // 把自己放进去
+    SYLAR_ASSERT(m_state != EXEC);
+    m_state = EXEC;
+    if(swapcontext(&Scheduler::GetMainFiber()->m_ctx, &m_ctx)) {
         SYLAR_ASSERT2(false, "swapcontext");
     }
 }
-
+// 切换到后台执行
+void Fiber::swapOut() {
+    SetThis(Scheduler::GetMainFiber());   // 把主协程放进去
+    if(swapcontext(&m_ctx, &Scheduler::GetMainFiber()->m_ctx)) {
+        SYLAR_ASSERT2(false, "swapcontext");
+    }
+}
+// 设置当前协程
 void Fiber::SetThis(sylar::Fiber *f) {
     t_fiber = f;
 }
@@ -167,6 +178,7 @@ void Fiber::MainFunc() {
     } catch (std::exception &ex) {
         cur->m_state = EXCEPT;
         SYLAR_LOG_ERROR(SYLAR_LOG_ROOT()) << "Fiber Except: " << ex.what()
+                                          << " fiber_id=" << cur->getId()
                                           << std::endl
                                           << sylar::BacktraceToString();
     } catch (...) {

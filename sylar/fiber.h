@@ -18,7 +18,9 @@
 
 namespace sylar {
 
+class Scheduler;
 class Fiber : public std::enable_shared_from_this<Fiber> {   // 获得当前类的指针，继承这个类之后、不可以在栈上创建对象
+friend class Scheduler;
 public:
     typedef std::shared_ptr<Fiber> ptr;
 
@@ -49,7 +51,12 @@ public:
     // 切换到后台执行
     void swapOut();
 
+    // 强行将当前协程置换成目标协程
+    void call();
+
     uint64_t getId() const { return m_id; }
+
+    State getState() const { return m_state; }
 
 public:
     // 获取当前协程
