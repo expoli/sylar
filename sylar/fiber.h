@@ -37,45 +37,38 @@ private:
 
 public:
     // 不允许默认构造，使用 functional 的方式构造，解决了函数指针不适合场景的问题
-    Fiber(std::function<void()> cb, size_t stack_size = 0);
+    Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
 
     ~Fiber();
 
     // 协程执行完了、或者出错的时候，重置协程函数，并重置状态，利用已经分配的内存，去做另外一些事情，节省内存的分配与释放
     // 能重置的协程的状态要么是 TERM，要么是 INIT
     void reset(std::function<void()> cb);
-
-    // 切换到当前协程执行
+    //切换到当前协程执行
     void swapIn();
-
-    // 切换到后台执行
+    //切换到后台执行
     void swapOut();
 
-    // 强行将当前协程置换成目标协程
     void call();
+    void back();
 
     uint64_t getId() const { return m_id; }
-
     State getState() const { return m_state; }
 
 public:
-    // 获取当前协程
+    //设置当前协程
+    static void SetThis(Fiber* f);
+    //返回当前协程
     static Fiber::ptr GetThis();
-
-    // 设置当前协程
-    static void SetThis(Fiber *f);
-
-    // 切换到后台，并且设置为 Ready 状态
+    //协程切换到后台，并且设置为Ready状态
     static void YieldToReady();
-
-    // 切换到后台，并且设置为 Hold 状态
+    //协程切换到后台，并且设置为Hold状态
     static void YieldToHold();
-
-    // 获取当前协程的总数
+    //总协程数
     static uint64_t TotalFibers();
 
     static void MainFunc();
-
+    static void CallerMainFunc();
     static uint64_t GetFiberId();
 
 private:

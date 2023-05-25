@@ -8,13 +8,13 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O0 -ggdb -std=c++11 -Wall -Wno-deprecated -Werror -Wno-unused-function -Wno-builtin-macro-redefined")
 
 set(LIB_SRC
+        sylar/config.cpp
+        sylar/fiber.cpp
         sylar/log.cpp
         sylar/util.cpp
-        sylar/config.cpp
-        sylar/thread.cpp
         sylar/sylar.h
-        sylar/fiber.cpp
-        sylar/scheduler.cpp)
+        sylar/scheduler.cpp
+        sylar/thread.cpp)
 
 find_package(yaml-cpp REQUIRED)
 # ${YAML_CPP_INCLUDE_DIR}

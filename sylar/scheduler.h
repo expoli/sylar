@@ -75,6 +75,8 @@ protected:
     virtual void idle();   // 子类实现，空闲协程，为了解决协程调度器没有任务做，又不能退出的问题
 
     void setThis(); // 设置当前线程的调度器
+
+    bool hasIdleThreads() { return m_idleThreadCount > 0;}
 private:
     template<class FiberOrCb>
     bool scheduleNoLock(FiberOrCb fc, int thread) {
