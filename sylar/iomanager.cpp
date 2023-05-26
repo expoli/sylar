@@ -300,4 +300,102 @@ IOManager* IOManager::GetThis() {
     return dynamic_cast<IOManager*>(Scheduler::GetThis());
 }
 
+void IOManager::tickle() {
+    if(hasIdleThreads()) {  // 如果有空闲线程，就不用唤醒，没有的话，就不用发送了，因为没有线程去接收
+        return;
+    }
+    int rt = write(m_tickleFds[1], "T", 1); // 向管道写入一个字节
+    SYLAR_ASSERT(rt == 1);
+}
+
+bool IOManager::stopping() {
+    return Scheduler::stopping()
+           && m_pendingEventCount == 0;
+}
+
+void IOManager::idle() {
+    epoll_event* events = new epoll_event[64]();    // 协程，不在栈上分配大数组
+    std::shared_ptr<epoll_event> shared_events(events, [](epoll_event* ptr){
+        delete[] ptr;
+    });
+
+    while(true) {
+        if(stopping()) {
+            SYLAR_LOG_INFO(g_logger) << "name=" << getName() << " idle stopping exit";
+            break;
+        }
+
+        int rt = 0;
+        do {
+            static const int MAX_TIMEOUT = 5000;    // ms 级
+            rt = epoll_wait(m_epfd, events, 64, MAX_TIMEOUT);
+            if(rt < 0 && errno == EINTR) {
+            } else {
+                break;
+            }
+        } while(true);
+
+        for(int i = 0; i < rt; ++i) {
+            epoll_event& event = events[i];
+            if(event.data.fd == m_tickleFds[0]) {   // 外部有发消息过来，被唤醒了
+                uint8_t dummy;
+                while(read(m_tickleFds[0], &dummy, 1) == 1);    // 读完所有的数据，读干净
+                continue;
+            }
+
+            FdContext* fd_ctx = (FdContext*)event.data.ptr;
+            FdContext::MutexType::Lock lock(fd_ctx->mutex);
+            /**
+             * 在循环的每次迭代中，该方法检查 epoll_event 对象的 events 字段是否包含 EPOLLERR 或 EPOLLHUP 标志。
+             * 如果是，则将 EPOLLIN 和 EPOLLOUT 标志添加到 events 字段中。
+             * 这种处理方式是合理的，因为当套接字出现错误或被挂起时，通常需要对其进行读写操作以获取错误信息并清除错误状态。
+             * 将 EPOLLIN 和 EPOLLOUT 标志添加到 events 字段中可以确保对套接字进行读写操作。
+             * 在后续处理中，如果 events 字段包含 EPOLLIN 或 EPOLLOUT 标志，则会触发相应的读或写事件。
+             * 这可以让应用程序处理套接字错误并采取适当的措施。
+             */
+            if(event.events & (EPOLLERR | EPOLLHUP)) {
+                event.events |= EPOLLIN | EPOLLOUT;
+            }
+            int real_events = NONE;
+            if(event.events & EPOLLIN) {
+                real_events |= READ;
+            }
+            if(event.events & EPOLLOUT) {
+                real_events |= WRITE;
+            }
+
+            if((fd_ctx->events & real_events) == NONE) {
+                continue;
+            }
+
+            int left_events = (fd_ctx->events & ~real_events);  // 剩下的事件
+            int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+            event.events = EPOLLET | left_events;
+
+            int rt2 = epoll_ctl(m_epfd, op, fd_ctx->fd, &event);
+            if(rt2) {
+                SYLAR_LOG_ERROR(g_logger) << "epoll_ctl(" << m_epfd << ", "
+                                          << op << "," << fd_ctx->fd << "," << event.events << "):"
+                                          << rt2 << " (" << errno << ") (" << strerror(errno) << ")";
+                continue;
+            }
+
+            if(real_events & READ) {
+                fd_ctx->triggerEvent(READ);
+                --m_pendingEventCount;
+            }
+            if(real_events & WRITE) {
+                fd_ctx->triggerEvent(WRITE);
+                --m_pendingEventCount;
+            }
+        }
+
+        Fiber::ptr cur = Fiber::GetThis();
+        auto raw_ptr = cur.get();
+        cur.reset();
+
+        raw_ptr->swapOut(); // 交出执行权
+    }
+}
+
 }

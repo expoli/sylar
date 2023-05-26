@@ -10,6 +10,7 @@ set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O0 -ggdb -std=c++11 -Wall -Wno-de
 set(LIB_SRC
         sylar/config.cpp
         sylar/fiber.cpp
+        sylar/iomanager.cpp
         sylar/log.cpp
         sylar/util.cpp
         sylar/sylar.h
