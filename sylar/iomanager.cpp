@@ -297,7 +297,9 @@ IOManager* IOManager::GetThis() {
      * 如果转换失败，它不会导致未定义行为，而只会返回空指针。
      * 但是，在使用返回的指针之前，应检查它是否为空，以避免对空指针进行解引用。
      */
-    return dynamic_cast<IOManager*>(Scheduler::GetThis());
+    IOManager* m = dynamic_cast<IOManager*>(Scheduler::GetThis());
+    SYLAR_ASSERT(m);
+    return m;
 }
 
 void IOManager::tickle() {

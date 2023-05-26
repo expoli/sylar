@@ -12,10 +12,10 @@ set(LIB_SRC
         sylar/fiber.cpp
         sylar/iomanager.cpp
         sylar/log.cpp
-        sylar/util.cpp
         sylar/sylar.h
         sylar/scheduler.cpp
-        sylar/thread.cpp)
+        sylar/thread.cpp
+        sylar/util.cpp)
 
 find_package(yaml-cpp REQUIRED)
 # ${YAML_CPP_INCLUDE_DIR}
@@ -58,6 +58,11 @@ add_executable(test_scheduler tests/test_scheduler.cpp)
 add_dependencies(test_scheduler sylar)
 force_redefine_file_macro_for_sources(test_scheduler)  # __FILE__
 target_link_libraries(test_scheduler ${LIB_LIB})
+
+add_executable(test_iomanager tests/test_iomanager.cpp)
+add_dependencies(test_iomanager sylar)
+force_redefine_file_macro_for_sources(test_iomanager) #__FILE__
+target_link_libraries(test_iomanager ${LIB_LIB})
 
 set(CMAKE_CXX_STANDARD 11)
 

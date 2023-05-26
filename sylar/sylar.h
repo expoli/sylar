@@ -12,13 +12,14 @@
 #define SYLAR_SYLAR_H
 
 // 如果头文件不经常变的话，这种方式还是挺合适的，不会引起联动变化
-#include "util.h"
-#include "log.h"
 #include "config.h"
+#include "fiber.h"
+#include "iomanager.h"
+#include "log.h"
+#include "macro.h"
 #include "scheduler.h"
 #include "singleton.h"
 #include "thread.h"
-#include "macro.h"
-#include "fiber.h"
+#include "util.h"
 
 #endif //SYLAR_SYLAR_H
